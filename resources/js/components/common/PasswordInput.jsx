@@ -1,20 +1,7 @@
 import { useState } from 'react';
 
-const PasswordInput = ({ value, onChange, placeholder = '••••••••', label = 'Password', error = '' }) => {
+const PasswordInput = ({ value, onChange, placeholder = 'Password', label = 'Password', error = '' }) => {
     const [show, setShow] = useState(false);
-
-    const hasMinLength = value.length >= 8;
-    const hasLower = /[a-z]/.test(value);
-    const hasUpper = /[A-Z]/.test(value);
-    const hasNumber = /[0-9]/.test(value);
-    const strengthScore = [hasMinLength, hasLower, hasUpper, hasNumber].filter(Boolean).length;
-
-    const getStrengthColor = () => {
-        if (strengthScore <= 1) return 'bg-red-500';
-        if (strengthScore === 2) return 'bg-yellow-500';
-        if (strengthScore === 3) return 'bg-blue-500';
-        return 'bg-green-500';
-    };
 
     return (
         <div>
@@ -46,24 +33,6 @@ const PasswordInput = ({ value, onChange, placeholder = '•••••••�
                 </button>
             </div>
             {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-            {value.length > 0 && (
-                <div className="mt-2">
-                    <div className="flex gap-1 mb-2">
-                        {[1, 2, 3, 4].map((level) => (
-                            <div
-                                key={level}
-                                className={`h-1 flex-1 rounded-full ${level <= strengthScore ? getStrengthColor() : 'bg-gray-200'}`}
-                            />
-                        ))}
-                    </div>
-                    <div className="text-xs space-y-1 pl-2">
-                        <p className={hasMinLength ? 'text-green-600' : 'text-gray-400'}>✓ Minimal 8 karakter</p>
-                        <p className={hasLower ? 'text-green-600' : 'text-gray-400'}>✓ Huruf kecil (a-z)</p>
-                        <p className={hasUpper ? 'text-green-600' : 'text-gray-400'}>✓ Huruf besar (A-Z)</p>
-                        <p className={hasNumber ? 'text-green-600' : 'text-gray-400'}>✓ Angka (0-9)</p>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

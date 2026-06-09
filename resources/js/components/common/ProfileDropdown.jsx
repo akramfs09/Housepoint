@@ -30,8 +30,8 @@ const ProfileDropdown = () => {
         customer: [
             { label: '👤 Profil Saya', path: '/customer/dashboard' },
             { label: '❤️ Properti Favorit', path: '#', disabled: true, soon: true },
-            { label: '💬 Pesan', path: '#', disabled: true, soon: true },
-            { label: '🏠➕ Jual Propertimu', path: '/customer/become-seller' },
+            { label: '💬 Pesan', path: '/chat' },
+            { label: '🏠 Jual Propertimu', path: '/customer/become-seller' },
             { label: '⏱️ Riwayat Pencarian', path: '#', disabled: true, soon: true },
             { label: '🏪 Upgrade Seller', path: '/customer/become-seller' },
             { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
@@ -39,29 +39,30 @@ const ProfileDropdown = () => {
         ],
         seller: [
             { label: '📊 Dashboard Seller', path: '/seller/dashboard' },
-            { label: '🏠 Properti Saya', path: '/seller/properties' },
+            { label: '📋 Kelola Properti', path: '/seller/properties', icon: '📋' },
+            { label: '💬 Pesan', path: '/chat' },
             { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
             { label: '⚙️ Pengaturan Akun', path: '#', disabled: true, soon: true },
         ],
         admin: [
-            { label: '📊 Analisis Statistik', path: '/admin/dashboard' },
+            { label: '📊 Dashboard Admin', path: '/admin/dashboard' },
             { label: '✅ Verifikasi Seller', path: '/admin/seller-verifications' },
-            { label: '✅ Log Aktivitas', path: '/admin/activity-logs' },
-            { label: '🏠 Moderasi Properti', path: '#', disabled: true, soon: true },
-            { label: '👥 Kelola User', path: '/admin/users', icon: '👥' },
+            { label: '🏠 Moderasi Properti', path: '/admin/properties', icon: '🏠' },
+            { label: '👥 Kelola User', path: '/admin/users' },
+            { label: '📋 Log Aktivitas', path: '/admin/activity-logs' },
             { label: '🚩 Kelola Laporan', path: '#', disabled: true, soon: true },
+            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
         ],
-
         super_admin: [
-            { label: '📊 Analisis Statistik', path: '/admin/dashboard' },
+            { label: '📊 Dashboard Super Admin', path: '/admin/dashboard' },
             { label: '✅ Verifikasi Seller', path: '/admin/seller-verifications' },
-            { label: '✅ Log Aktivitas', path: '/admin/activity-logs' },
-            { label: '🏠 Moderasi Properti', path: '/admin/properties', disabled: true, soon: true },
-            { label: '👥 Kelola User', path: '/admin/users', icon: '👥' },
-            { label: '🚩 Kelola Laporan', path: '/admin/reports', disabled: true, soon: true },
-            { label: '👤 Kelola Admin Lain', path: '/admin/admins', icon: '👤' },
-            { label: '🔄 Ubah Role User', path: '/admin/users/roles', disabled: true, soon: true },
-            { label: '🔄 Reset Apply Count', path: '/admin/seller-reset', disabled: true, soon: true },
+            { label: '🏠 Moderasi Properti', path: '/admin/properties', icon: '🏠' },
+            { label: '👥 Kelola User', path: '/admin/users' },
+            { label: '👤 Kelola Admin Lain', path: '/admin/admins' },
+            { label: '📋 Log Aktivitas', path: '/admin/activity-logs' },
+            { label: '📋 Audit Log', path: '/admin/admins/audit-logs' },
+            { label: '🚩 Kelola Laporan', path: '#', disabled: true, soon: true },
+            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
         ],
     };
 
@@ -90,7 +91,11 @@ const ProfileDropdown = () => {
                         <p className="font-bold text-[#2c2c2c] text-sm">{user?.name || user?.email}</p>
                         <p className="text-[11px] text-gray-500 mt-1">✉️ {user?.email}</p>
                         <p className="text-[11px] text-gray-500 mt-0.5">
-                            🏷️ Role: {user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : user?.role === 'seller' ? 'Seller' : 'Customer'}
+                            🏷️ Role: {
+                                user?.role === 'super_admin' ? 'Super Admin' : 
+                                user?.role === 'admin' ? 'Admin' : 
+                                user?.role === 'seller' ? 'Seller' : 'Customer'
+                            }
                             &nbsp;&nbsp;🟢 Aktif
                         </p>
                     </div>
@@ -109,7 +114,11 @@ const ProfileDropdown = () => {
                                 }`}
                             >
                                 <span>{item.label}</span>
-                                {item.soon && <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Segera</span>}
+                                {item.soon && (
+                                    <span className="text-[10px] bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">
+                                        Segera
+                                    </span>
+                                )}
                             </Link>
                         ))}
                     </div>

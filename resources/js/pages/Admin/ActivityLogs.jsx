@@ -105,6 +105,11 @@ const ActivityLogs = () => {
             target = targetEmail;
         }
 
+        // Fallback khusus seller/banding jika data dari target tidak tersedia
+        if (target === '-' && metadata.seller_id) {
+            target = `Seller #${metadata.seller_id}`;
+        }
+
         switch (log.action) {
             case 'ban_user':
                 detail = `Alasan: ${metadata.alasan || '-'}`;
@@ -115,23 +120,15 @@ const ActivityLogs = () => {
                 if (target === '-') target = `User #${metadata.user_id}`;
                 break;
             case 'approve_seller':
-                target = targetName || metadata.seller_name || `Seller #${metadata.seller_id}`;
-                if (metadata.seller_email) target += ` (${metadata.seller_email})`;
                 detail = 'Disetujui';
                 break;
             case 'reject_seller':
-                target = targetName || metadata.seller_name || `Seller #${metadata.seller_id}`;
-                if (metadata.seller_email) target += ` (${metadata.seller_email})`;
                 detail = `Alasan: ${metadata.alasan || '-'}`;
                 break;
             case 'approve_appeal':
-                target = targetName || metadata.seller_name || `Seller #${metadata.seller_id}`;
-                if (metadata.seller_email) target += ` (${metadata.seller_email})`;
                 detail = `Banding disetujui. Alasan banding: ${metadata.alasan || '-'}`;
                 break;
             case 'reject_appeal':
-                target = targetName || metadata.seller_name || `Seller #${metadata.seller_id}`;
-                if (metadata.seller_email) target += ` (${metadata.seller_email})`;
                 detail = `Banding ditolak. Alasan banding: ${metadata.alasan || '-'}`;
                 break;
             case 'invite_admin':
@@ -158,8 +155,8 @@ const ActivityLogs = () => {
                 detail = JSON.stringify(metadata);
         }
 
-        return { target, detail };
-    };
+    return { target, detail };
+};
 
     return (
         <div className="space-y-6">

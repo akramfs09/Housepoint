@@ -11,19 +11,26 @@ import BecomeSeller from '../pages/Customer/BecomeSeller';
 import CustomerDashboard from '../pages/Customer/Dashboard';
 import SellerDashboard from '../pages/Seller/SellerDashboard';
 import PropertyList from '../pages/Seller/PropertyList';
+import PaymentPage from '../pages/Seller/PaymentPage';
+import PropertyCatalog from '../pages/Public/PropertyCatalog';
+import PropertyDetail from '../pages/Public/PropertyDetail';
 import AdminDashboard from '../pages/Admin/Dashboard';
 import SellerVerifications from '../pages/Admin/SellerVerifications';
+import PropertyVerifications from '../pages/Admin/PropertyVerifications';
 import Forbidden from '../pages/Errors/Forbidden';
 import NotFound from '../pages/Errors/NotFound';
 import ManageAdmins from '../pages/Admin/ManageAdmins';
 import InviteAdmin from '../pages/Admin/InviteAdmin';
 import EditAdmin from '../pages/Admin/EditAdmin';
 import ManageUsers from '../pages/Admin/ManageUsers';   
-import ActivityLogs from '../pages/Admin/ActivityLogs'
+import ActivityLogs from '../pages/Admin/ActivityLogs';
+import ChatPage from '../pages/Chat/ChatPage';
 
 const AppRouter = () => (
     <Routes>
+        {/* ========================================== */}
         {/* Public */}
+        {/* ========================================== */}
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -32,8 +39,18 @@ const AppRouter = () => (
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/403" element={<Forbidden />} />
 
-        {/* Customer & Seller (halaman BecomeSeller juga bisa diakses seller) */}
-        <Route path="/customer/dashboard" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
+        {/* Katalog Publik */}
+        <Route path="/properties" element={<PropertyCatalog />} />
+        <Route path="/property/:slug" element={<PropertyDetail />} />
+
+        {/* ========================================== */}
+        {/* Customer */}
+        {/* ========================================== */}
+        <Route path="/customer/dashboard" element={
+            <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerDashboard />
+            </ProtectedRoute>
+        } />
         <Route path="/customer/become-seller" element={
             <ProtectedRoute allowedRoles={['customer', 'seller']}>
                 <DashboardLayout pageTitle="Upgrade ke Seller" pageDescription="Verifikasi akun untuk mulai menjual properti">
@@ -42,15 +59,58 @@ const AppRouter = () => (
             </ProtectedRoute>
         } />
 
+        {/* ========================================== */}
         {/* Seller */}
-        <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['seller']}><SellerDashboard /></ProtectedRoute>} />
-        <Route path="/seller/properties" element={<ProtectedRoute allowedRoles={['seller']}><DashboardLayout pageTitle="Properti Saya" pageDescription="Daftar properti yang Anda kelola"><PropertyList /></DashboardLayout></ProtectedRoute>} />
+        {/* ========================================== */}
+        <Route path="/seller/dashboard" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+                <SellerDashboard />
+            </ProtectedRoute>
+        } />
+        <Route path="/seller/properties" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+                <DashboardLayout pageTitle="Kelola Properti" pageDescription="Daftar dan upload properti Anda">
+                    <PropertyList />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        <Route path="/seller/properties/:id/edit" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+                <DashboardLayout pageTitle="Edit Properti" pageDescription="Perbarui detail properti">
+                    <PropertyList />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        <Route path="/seller/properties/:id/pay" element={
+            <ProtectedRoute allowedRoles={['seller']}>
+                <DashboardLayout pageTitle="Pembayaran" pageDescription="Selesaikan pembayaran upload properti">
+                    <PaymentPage />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
 
-        {/* Admin */}
-        <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><AdminDashboard /></ProtectedRoute>} />
-        <Route path="/admin/seller-verifications" element={<ProtectedRoute allowedRoles={['admin', 'super_admin']}><DashboardLayout pageTitle="✅ Verifikasi Seller" pageDescription="Approve atau tolak pengajuan seller"><SellerVerifications /></DashboardLayout></ProtectedRoute>} />
-
-        {/* 🆕 Kelola User (Admin & Super Admin) */}
+        {/* ========================================== */}
+        {/* Admin & Super Admin */}
+        {/* ========================================== */}
+        <Route path="/admin/dashboard" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <AdminDashboard />
+            </ProtectedRoute>
+        } />
+        <Route path="/admin/seller-verifications" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <DashboardLayout pageTitle="✅ Verifikasi Seller" pageDescription="Approve atau tolak pengajuan seller">
+                    <SellerVerifications />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        <Route path="/admin/properties" element={
+            <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <DashboardLayout pageTitle="🏠 Moderasi Properti" pageDescription="Setujui atau tolak properti yang diajukan">
+                    <PropertyVerifications />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
         <Route path="/admin/users" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                 <DashboardLayout pageTitle="👥 Kelola User" pageDescription="Kelola semua pengguna HousePoint">
@@ -58,13 +118,6 @@ const AppRouter = () => (
                 </DashboardLayout>
             </ProtectedRoute>
         } />
-
-        {/* Super Admin */}
-        <Route path="/admin/admins" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardLayout pageTitle="👤 Kelola Admin Lain" pageDescription="Kelola semua admin HousePoint"><ManageAdmins /></DashboardLayout></ProtectedRoute>} />
-        <Route path="/admin/admins/invite" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardLayout pageTitle="Undang Admin Baru" pageDescription="Kirim undangan untuk admin baru"><InviteAdmin /></DashboardLayout></ProtectedRoute>} />
-        <Route path="/admin/admins/:id/edit" element={<ProtectedRoute allowedRoles={['super_admin']}><DashboardLayout pageTitle="Edit Admin" pageDescription="Perbarui informasi admin"><EditAdmin /></DashboardLayout></ProtectedRoute>} />
-
-        {/*Log Aktivitas -*/}
         <Route path="/admin/activity-logs" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                 <DashboardLayout pageTitle="📋 Log Aktivitas" pageDescription="Riwayat aktivitas admin">
@@ -73,7 +126,39 @@ const AppRouter = () => (
             </ProtectedRoute>
         } />
 
-        {/* 404 Not Found — harus paling bawah */}
+        {/* ========================================== */}
+        {/* Super Admin Only */}
+        {/* ========================================== */}
+        <Route path="/admin/admins" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+                <DashboardLayout pageTitle="👤 Kelola Admin Lain" pageDescription="Kelola semua admin HousePoint">
+                    <ManageAdmins />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        <Route path="/admin/admins/invite" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+                <DashboardLayout pageTitle="Undang Admin Baru" pageDescription="Kirim undangan untuk admin baru">
+                    <InviteAdmin />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        <Route path="/admin/admins/:id/edit" element={
+            <ProtectedRoute allowedRoles={['super_admin']}>
+                <DashboardLayout pageTitle="Edit Admin" pageDescription="Perbarui informasi admin">
+                    <EditAdmin />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
+        
+        {/* ========================================== */}
+        {/* Chat */}
+        {/* ========================================== */}
+        <Route path="/chat" element={<ProtectedRoute allowedRoles={['customer', 'seller']}><ChatPage /></ProtectedRoute>} />
+
+        {/* ========================================== */}
+        {/* 404 Not Found */}
+        {/* ========================================== */}
         <Route path="*" element={<NotFound />} />
     </Routes>
 );

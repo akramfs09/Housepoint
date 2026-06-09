@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             SuperAdminSeeder::class,
             DummySellerSeeder::class,
             DummyPropertySeeder::class, 
+            LocationSeeder::class,
         ]);
     }
 }

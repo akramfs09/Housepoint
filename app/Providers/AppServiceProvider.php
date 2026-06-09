@@ -6,6 +6,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use App\Models\Conversation;
+use App\Policies\ConversationPolicy;
+use Illuminate\Support\Facades\Gate;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,5 +43,8 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('reset-password', function (Request $request) {
             return Limit::perMinute(30)->by($request->ip());
         });
+
+        // 🔐 Registrasi Policy untuk Chat
+        Gate::policy(Conversation::class, ConversationPolicy::class);
     }
 }

@@ -78,4 +78,81 @@ api.interceptors.response.use(
     }
 );
 
+// ==========================================
+//  Properti Seller (Private)
+// ==========================================
+
+// Ambil daftar properti milik seller
+export const fetchMyProperties = (params = {}) => {
+    return api.get('/seller/properties', { params });
+};
+
+// Upload properti baru (draft)
+export const createProperty = (formData) => {
+    return api.post('/seller/properties', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+// Update properti
+export const updateProperty = (id, formData) => {
+    // Gunakan POST dengan _method=PUT untuk multipart/form-data
+    formData.append('_method', 'PUT');
+    return api.post(`/seller/properties/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+// Hapus properti (soft delete)
+export const deleteProperty = (id) => {
+    return api.delete(`/seller/properties/${id}`);
+};
+
+// Ajukan properti ke moderasi (draft → pending)
+export const submitProperty = (id) => {
+    return api.patch(`/properties/${id}/submit`);
+};
+
+// ==========================================
+//  Pembayaran (Private - Seller)
+// ==========================================
+
+// Inisiasi pembayaran untuk properti approved
+export const initiatePayment = (propertyId) => {
+    return api.post(`/seller/properties/${propertyId}/pay`);
+};
+
+// ==========================================
+//  Moderasi Properti (Private - Admin/Super Admin)
+// ==========================================
+
+// Ambil daftar properti pending
+export const fetchPendingProperties = () => {
+    return api.get('/admin/properties/pending');
+};
+
+// Setujui properti
+export const approveProperty = (id) => {
+    return api.patch(`/properties/${id}/approve`);
+};
+
+// Tolak properti dengan alasan
+export const rejectProperty = (id, alasan) => {
+    return api.patch(`/properties/${id}/reject`, { alasan });
+};
+
+// ==========================================
+//  Katalog Publik (Public)
+// ==========================================
+
+// Fetch properti publik (katalog)
+export const fetchPublicProperties = (params = {}) => {
+    return api.get('/properties', { params });
+};
+
+// Fetch detail properti publik berdasarkan slug
+export const fetchPublicPropertyDetail = (slug) => {
+    return api.get(`/properties/${slug}`);
+};
+
 export default api;

@@ -4,7 +4,28 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\SellerController;
 use App\Http\Controllers\Api\AdminManagementController;
+use App\Http\Controllers\Api\PublicPropertyController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\ChatController;
 use Illuminate\Support\Facades\Route;
+
+// ================================================
+//  Lokasi (publik, untuk autocomplete)
+// ================================================
+Route::get('/locations/provinces', [LocationController::class, 'provinces']);
+Route::get('/locations/cities', [LocationController::class, 'cities']);
+
+// ================================================
+//  Katalog Publik (tanpa autentikasi)
+// ================================================
+Route::get('/properties', [PublicPropertyController::class, 'index']);
+Route::get('/properties/{slug}', [PublicPropertyController::class, 'show']);
+
+// ================================================
+//  Webhook Midtrans (tanpa autentikasi)
+// ================================================
+Route::post('/payment/notify', [PaymentController::class, 'handleNotification']);
 
 // ================================================
 //  Autentikasi
@@ -32,6 +53,18 @@ Route::get('/user', [AuthController::class, 'me'])
     ->middleware(['auth:sanctum', 'banned']);
 
 // ================================================
+//  Chat (Customer & Seller)
+Route::middleware(['auth:sanctum', 'banned', 'role:customer,seller'])->prefix('chat')->group(function () {
+    Route::post('/start', [ChatController::class, 'start']);
+    Route::get('/conversations', [ChatController::class, 'index']);
+    Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
+    Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send']);
+    Route::patch('/conversations/{conversation}/read', [ChatController::class, 'markRead']);
+    Route::patch('/conversations/{conversation}/archive', [ChatController::class, 'archive']);
+    Route::patch('/conversations/{conversation}/unarchive', [ChatController::class, 'unarchive']);
+});
+
+// ================================================
 //  Seller
 // ================================================
 Route::middleware(['auth:sanctum', 'banned'])->group(function () {
@@ -52,6 +85,12 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
         Route::delete('/seller/properties/{property}', [SellerController::class, 'destroy']);
         Route::get('/seller/properties', [SellerController::class, 'myProperties']);
         Route::patch('/properties/{property}/submit', [SellerController::class, 'submit']);
+        
+        // Pembayaran
+        Route::post('/seller/properties/{property}/pay', [SellerController::class, 'initiatePayment']);
+        
+        // Publish properti setelah bayar
+        Route::patch('/seller/properties/{property}/publish', [SellerController::class, 'publishProperty']);
     });
 });
 
@@ -64,6 +103,8 @@ Route::middleware(['auth:sanctum', 'banned', 'role:admin,super_admin'])->group(f
     Route::patch('/admin/seller-verifications/{seller}/approve', [AdminController::class, 'approveSeller']);
     Route::patch('/admin/seller-verifications/{seller}/reject', [AdminController::class, 'rejectSeller']);
 
+    // Moderasi Properti
+    Route::get('/admin/properties/pending', [AdminController::class, 'propertyVerifications']);
     Route::patch('/properties/{property}/approve', [AdminController::class, 'approveProperty']);
     Route::patch('/properties/{property}/reject', [AdminController::class, 'rejectProperty']);
 
@@ -88,12 +129,11 @@ Route::middleware(['auth:sanctum', 'banned', 'role:admin,super_admin'])->group(f
 // ================================================
 Route::middleware(['auth:sanctum', 'banned', 'role:super_admin'])->prefix('admin/admins')->group(function () {
     Route::get('/', [AdminManagementController::class, 'index']);
+    Route::get('/audit-logs', [AdminManagementController::class, 'auditLogs']);
     Route::get('/{admin}', [AdminManagementController::class, 'show']);
     Route::post('/', [AdminManagementController::class, 'store']);
     Route::put('/{admin}', [AdminManagementController::class, 'update']);
     Route::patch('/{admin}/deactivate', [AdminManagementController::class, 'deactivate']);
     Route::patch('/{admin}/reactivate', [AdminManagementController::class, 'reactivate']);
     Route::delete('/{admin}', [AdminManagementController::class, 'destroy']);
-    Route::get('/admin/admins/audit-logs', [AdminManagementController::class, 'auditLogs']);
-    Route::get('/admin/activity-logs', [AdminController::class, 'activityLogs']);
 });

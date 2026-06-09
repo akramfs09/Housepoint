@@ -30,9 +30,12 @@ class PropertyPolicy
 
     public function update(User $user, Property $property): bool
     {
-        // Hanya pemilik dengan status draft atau rejected (bukan pending/published)
+        // Pemilik bisa edit jika: draft, rejected, atau published dengan edit_count < 2
         return $user->sellerProfile?->id === $property->seller_id
-            && in_array($property->status, ['draft', 'rejected']);
+            && (
+                in_array($property->status, ['draft', 'rejected'])
+                || ($property->status === 'published' && $property->edit_count < 2)
+            );
     }
 
     public function delete(User $user, Property $property): bool

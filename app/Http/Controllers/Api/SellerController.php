@@ -13,7 +13,9 @@ use App\Services\PropertyService;
 use App\Services\SellerService;
 use Illuminate\Http\Request;
 use App\Models\SellerProfile;
+use App\Models\Transaction;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\PaymentService;
 
 class SellerController extends Controller
 {
@@ -41,10 +43,15 @@ class SellerController extends Controller
     public function myProperties(Request $request)
     {
         $seller = $request->user()->sellerProfile;
-        $properties = Property::where('seller_id', $seller->id)
-            ->with(['images', 'sellerProfile.user'])
-            ->latest()
-            ->paginate(12);
+        $query = Property::where('seller_id', $seller->id)
+            ->with(['images', 'sellerProfile.user']);
+
+        // Filter berdasarkan status jika dikirim dari frontend
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        $properties = $query->latest()->paginate(12);
 
         return PropertyResource::collection($properties);
     }
@@ -168,5 +175,75 @@ class SellerController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 400);
         }
+    }
+
+    public function initiatePayment(Property $property, PaymentService $paymentService)
+    {
+        $seller = request()->user()->sellerProfile;
+        if ($property->seller_id !== $seller->id) {
+            return $this->error('Properti tidak ditemukan.', 404);
+        }
+
+        if ($property->status !== 'approved') {
+            return $this->error('Hanya properti yang sudah disetujui yang bisa dibayar.', 400);
+        }
+
+        try {
+            $snapToken = $paymentService->createTransaction($property);
+            return $this->success([
+                'snap_token' => $snapToken,
+            ], 'Transaksi berhasil dibuat.');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Publish properti setelah pembayaran sukses (dipanggil dari frontend).
+     */
+    public function publishProperty(Property $property, PaymentService $paymentService)
+    {
+        $seller = request()->user()->sellerProfile;
+
+        // 1. Pastikan properti milik seller yang sedang login
+        if ($property->seller_id !== $seller->id) {
+            return $this->error('Properti tidak ditemukan.', 404);
+        }
+
+        // 2. Jika webhook sudah mem-publish properti lebih dulu, endpoint ini tetap sukses.
+        if ($property->status === 'published') {
+            return $this->success(null, 'Properti sudah aktif.');
+        }
+
+        // 3. Pastikan properti dalam status approved
+        if ($property->status !== 'approved') {
+            return $this->error('Properti belum siap dipublikasikan.', 400);
+        }
+
+        // 4. Pastikan ada transaksi pembayaran yang SUKSES untuk properti ini.
+        $transaction = Transaction::where('property_id', $property->id)
+            ->where('user_id', request()->user()->id)
+            ->where('status', 'paid')
+            ->first();
+
+        if (!$transaction) {
+            $latestTransaction = Transaction::where('property_id', $property->id)
+                ->where('user_id', request()->user()->id)
+                ->latest()
+                ->first();
+
+            if ($latestTransaction) {
+                $latestTransaction = $paymentService->syncTransactionStatus($latestTransaction);
+            }
+
+            if (!$latestTransaction || $latestTransaction->status !== 'paid') {
+                return $this->success(null, 'Pembayaran sedang diverifikasi. Properti akan aktif otomatis setelah notifikasi pembayaran diterima.', 202);
+            }
+        }
+
+        // 5. Publikasikan properti
+        $this->propertyService->publish($property);
+
+        return $this->success(null, 'Properti berhasil dipublikasikan.');
     }
 }

@@ -10,7 +10,7 @@ const Navbar = () => {
         if (!user) {
             navigate('/login');
         } else if (user.role === 'seller') {
-            navigate('/seller/dashboard');
+            navigate('/seller/properties');
         } else if (user.role === 'customer') {
             navigate('/customer/become-seller');
         } else {
@@ -38,7 +38,7 @@ const Navbar = () => {
 
                 {/* Navigasi */}
                 <nav className="flex items-center gap-10 text-[14px] font-medium">
-                    <Link to="/" className="text-[#d49b37]">Beranda</Link>
+                    <Link to="/" className="text-[#d49b37] hover:text-[#d49b37] transition">Beranda</Link>
                     <Link to="/properties" className="hover:text-[#d49b37] transition">Cari Properti</Link>
                     <Link to="/about" className="hover:text-[#d49b37] transition">Tentang Kami</Link>
                     <Link to="/contact" className="hover:text-[#d49b37] transition">Kontak</Link>
@@ -47,7 +47,7 @@ const Navbar = () => {
                 {/* Aksi */}
                 <div className="flex items-center gap-5">
                     {/* TODO: Favorit - Batch 5 */}
-                    <button className="text-[22px]" title="Favorit (segera hadir)">♡</button>
+                    <button className="text-[22px] cursor-not-allowed" title="Favorit (segera hadir)">♡</button>
 
                     <button
                         onClick={handleJualProperti}

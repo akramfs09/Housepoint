@@ -1,18 +1,12 @@
 import Navbar from '../../components/common/Navbar';
-import HeroSection from '../../components/home/HeroSection';
-import StatsBar from '../../components/home/StatsBar';
-import FeaturedProperties from '../../components/home/FeaturedProperties';
-import FeaturesSection from '../../components/home/FeaturesSection';
+import MainContent from '../../components/common/MainContent';
 import Footer from '../../components/common/Footer';
 
 const SellerDashboard = () => {
     return (
         <div className="min-h-screen bg-[#efe6d5] text-[#2c2c2c] font-sans">
             <Navbar />
-            <HeroSection />
-            <StatsBar />
-            <FeaturedProperties />
-            <FeaturesSection />
+            <MainContent />
             <Footer />
         </div>
     );

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SellerResource;
+use App\Http\Resources\PropertyResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Property;
 use App\Models\SellerProfile;
@@ -34,6 +35,9 @@ class AdminController extends Controller
         $this->userService = $userService;
     }
 
+    // ============================================
+    // Seller Verifications
+    // ============================================
     public function sellerVerifications()
     {
         $sellers = SellerProfile::with('user')
@@ -57,6 +61,48 @@ class AdminController extends Controller
         return $this->success(new SellerResource($seller), 'Seller berhasil ditolak.');
     }
 
+    public function showSeller(SellerProfile $seller)
+    {
+        return $this->success(new SellerResource($seller));
+    }
+
+    // ============================================
+    // Property Verifications (Moderasi Properti)
+    // ============================================
+    public function propertyVerifications()
+    {
+        $properties = Property::with(['images', 'sellerProfile.user'])
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate(20);
+
+        return PropertyResource::collection($properties);
+    }
+
+    public function approveProperty(Property $property)
+    {
+        try {
+            $this->propertyService->approve($property);
+            return $this->success(null, 'Properti berhasil disetujui.');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 400);
+        }
+    }
+
+    public function rejectProperty(Request $request, Property $property)
+    {
+        $request->validate(['alasan' => 'required|string|max:500']);
+        try {
+            $this->propertyService->reject($property, $request->alasan);
+            return $this->success(null, 'Properti berhasil ditolak.');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 400);
+        }
+    }
+
+    // ============================================
+    // User Management
+    // ============================================
     public function listUsers(Request $request)
     {
         $users = $this->userService->listUsers($request->only([
@@ -83,18 +129,9 @@ class AdminController extends Controller
         return $this->success(null, 'Pengguna berhasil diaktifkan kembali.');
     }
 
-    public function approveAppeal(SellerAppeal $appeal)
-    {
-        $this->sellerService->approveAppeal($appeal, request()->user());
-        return $this->success(null, 'Banding disetujui. Seller mendapat 1 kesempatan tambahan.');
-    }
-
-    public function rejectAppeal(Request $request, SellerAppeal $appeal)
-    {
-        $this->sellerService->rejectAppeal($appeal, request()->user(), $request->catatan_internal);
-        return $this->success(null, 'Banding ditolak.');
-    }
-
+    // ============================================
+    // Seller Appeals
+    // ============================================
     public function listAppeals(Request $request)
     {
         $query = SellerAppeal::with('sellerProfile.user');
@@ -111,32 +148,21 @@ class AdminController extends Controller
         return $this->success($appeals->items());
     }
 
-    public function approveProperty(Property $property)
+    public function approveAppeal(SellerAppeal $appeal)
     {
-        try {
-            $this->propertyService->approve($property);
-            return $this->success(null, 'Properti berhasil disetujui.');
-        } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
-        }
+        $this->sellerService->approveAppeal($appeal, request()->user());
+        return $this->success(null, 'Banding disetujui. Seller mendapat 1 kesempatan tambahan.');
     }
 
-    public function rejectProperty(Request $request, Property $property)
+    public function rejectAppeal(Request $request, SellerAppeal $appeal)
     {
-        $request->validate(['alasan' => 'required|string|max:500']);
-        try {
-            $this->propertyService->reject($property, $request->alasan);
-            return $this->success(null, 'Properti berhasil ditolak.');
-        } catch (\Exception $e) {
-            return $this->error($e->getMessage(), 400);
-        }
+        $this->sellerService->rejectAppeal($appeal, request()->user(), $request->catatan_internal);
+        return $this->success(null, 'Banding ditolak.');
     }
 
-    public function showSeller(SellerProfile $seller)
-    {
-        return $this->success(new SellerResource($seller));
-    }
-
+    // ============================================
+    // Activity Logs
+    // ============================================
     public function activityLogs(Request $request)
     {
         $user = $request->user();
@@ -157,7 +183,7 @@ class AdminController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        // 🆕 Filter multi‑aksi (menerima array atau string koma)
+        // Filter multi‑aksi
         if ($request->filled('action')) {
             $actions = $request->input('action');
             if (is_string($actions)) {
@@ -176,6 +202,35 @@ class AdminController extends Controller
         }
 
         $logs = $query->paginate($request->per_page ?? 20);
+
+        // ✨ Tambahan: set name & email pada target agar frontend bisa langsung baca
+        $logs->getCollection()->transform(function ($log) {
+            $target = $log->target;
+            if ($target instanceof \App\Models\SellerProfile) {
+                // Pastikan relasi user termuat (jika belum, eager load)
+                if (!$target->relationLoaded('user')) {
+                    $target->load('user');
+                }
+                $user = $target->user;
+                if ($user) {
+                    $target->setAttribute('name', $user->name);
+                    $target->setAttribute('email', $user->email);
+                }
+            } elseif ($target instanceof \App\Models\SellerAppeal) {
+                if (!$target->relationLoaded('sellerProfile')) {
+                    $target->load('sellerProfile.user');
+                }
+                $user = $target->sellerProfile->user ?? null;
+                if ($user) {
+                    $target->setAttribute('name', $user->name);
+                    $target->setAttribute('email', $user->email);
+                }
+            }
+            // Untuk tipe User, name & email sudah ada
+
+            return $log;
+        });
+
         return response()->json($logs);
     }
 }
