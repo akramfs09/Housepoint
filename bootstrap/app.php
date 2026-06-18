@@ -35,6 +35,9 @@ return Application::configure(basePath: dirname(__DIR__))
                       ->where('used_at', '<', now()->subHours(24));
             })->orWhere('expires_at', '<', now()->subHours(24))->delete();
         })->hourly();
+
+        // Rotasi properti unggulan setiap hari pukul 00:00 WIB.
+        $schedule->command('property:rotate-featured')->dailyAt('00:00');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

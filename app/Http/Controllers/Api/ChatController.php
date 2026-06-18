@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\MessageSent;
 use App\Events\MessageRead;
-use App\Events\NewMessageNotification; // 🆕 tambahan
+use App\Events\NewMessageNotification;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Message;
@@ -13,6 +13,7 @@ use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Notifications\ChatMessageNotification;
 
 class ChatController extends Controller
 {
@@ -138,7 +139,8 @@ class ChatController extends Controller
             ->get();
 
         foreach ($otherParticipants as $participant) {
-            broadcast(new NewMessageNotification($message, $participant->user_id))->toOthers();
+            // Notifikasi database + broadcast
+            $participant->user->notify(new ChatMessageNotification($message));
         }
 
         return response()->json([

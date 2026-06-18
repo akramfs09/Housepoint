@@ -3,18 +3,17 @@ import { Link } from 'react-router-dom';
 const Footer = () => {
     return (
         <footer className="bg-[#2d261d] text-white mt-8">
-            <div className="max-w-[1180px] mx-auto px-6 py-16 grid grid-cols-4 gap-10">
-                {/* Logo & Deskripsi */}
+            <div className="max-w-[1180px] mx-auto px-4 sm:px-6 py-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
                 <div>
-                    <Link to="/" className="flex items-center gap-2 mb-5">
-                        <div className="w-10 h-10 rounded-full border border-[#8d7a5f] flex items-center justify-center text-[#d6b178] font-bold text-sm">
+                    <Link to="/" className="inline-flex items-center gap-2 mb-5 max-w-full">
+                        <div className="w-10 h-10 rounded-full border border-[#8d7a5f] flex items-center justify-center text-[#d6b178] font-bold text-sm shrink-0">
                             HP
                         </div>
                         <div>
                             <h1 className="text-[18px] font-bold leading-none">
                                 HOUSEPOINT
                             </h1>
-                            <p className="text-[10px] tracking-[4px] text-[#bca88b] mt-1">
+                            <p className="text-[10px] tracking-[3px] sm:tracking-[4px] text-[#bca88b] mt-1">
                                 PROPERTY
                             </p>
                         </div>
@@ -26,7 +25,6 @@ const Footer = () => {
                     </p>
                 </div>
 
-                {/* Navigasi */}
                 <div>
                     <h5 className="font-semibold text-[18px] mb-5">Navigasi</h5>
                     <ul className="space-y-3 text-[#c9bca8] text-[14px]">
@@ -37,7 +35,6 @@ const Footer = () => {
                     </ul>
                 </div>
 
-                {/* Layanan */}
                 <div>
                     <h5 className="font-semibold text-[18px] mb-5">Layanan</h5>
                     <ul className="space-y-3 text-[#c9bca8] text-[14px]">
@@ -48,7 +45,6 @@ const Footer = () => {
                     </ul>
                 </div>
 
-                {/* Kontak */}
                 <div>
                     <h5 className="font-semibold text-[18px] mb-5">Hubungi Kami</h5>
                     <div className="space-y-4 text-[#c9bca8] text-[14px] leading-7">
@@ -62,7 +58,7 @@ const Footer = () => {
             </div>
 
             <div className="border-t border-white/10">
-                <div className="max-w-[1180px] mx-auto px-6 py-6 flex items-center justify-between text-[13px] text-[#c1b39d]">
+                <div className="max-w-[1180px] mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px] text-[#c1b39d]">
                     <p>© 2026 HousePoint. All rights reserved.</p>
                     <div className="flex items-center gap-6">
                         <p>Privasi</p>

@@ -5,6 +5,7 @@ import PropertyCard from '../../components/common/PropertyCard';
 import ProvinceCitySelect from '../../components/common/ProvinceCitySelect';
 import DragDropUpload from '../../components/common/DragDropUpload';
 import { toast } from 'react-hot-toast';
+import FeaturedModal from '../../components/common/FeaturedModal'; // ✅ import modal unggulan
 
 const STATUS_TABS = [
     { key: '', label: 'Semua' },
@@ -38,6 +39,7 @@ const PropertyList = () => {
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [counts, setCounts] = useState({ draft: 0, pending: 0 });
+    const [featuredModal, setFeaturedModal] = useState(null); // ✅ state untuk modal unggulan
 
     // ========== FORM UPLOAD STATE ==========
     const [formLoading, setFormLoading] = useState(false);
@@ -164,6 +166,10 @@ const PropertyList = () => {
                 break;
             case 'pay':
                 navigate(`/seller/properties/${propertyId}/pay`);
+                break;
+            case 'featured':   // ✅ buka modal unggulan
+                const prop = properties.find(p => p.id === propertyId);
+                if (prop) setFeaturedModal(prop);
                 break;
             default:
                 break;
@@ -505,6 +511,17 @@ const PropertyList = () => {
                         </div>
                     </form>
                 </div>
+            )}
+
+            {/* ✅ Modal Unggulan */}
+            {featuredModal && (
+                <FeaturedModal
+                    property={featuredModal}
+                    onClose={(shouldReload = false) => {
+                        setFeaturedModal(null);
+                        if (shouldReload) loadProperties();
+                    }}
+                />
             )}
         </div>
     );

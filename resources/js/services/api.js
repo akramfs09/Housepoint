@@ -87,6 +87,11 @@ export const fetchMyProperties = (params = {}) => {
     return api.get('/seller/properties', { params });
 };
 
+// Dashboard statistik seller
+export const fetchSellerDashboard = (params = {}) => {
+    return api.get('/seller/dashboard', { params });
+};
+
 // Upload properti baru (draft)
 export const createProperty = (formData) => {
     return api.post('/seller/properties', formData, {
@@ -111,6 +116,25 @@ export const deleteProperty = (id) => {
 // Ajukan properti ke moderasi (draft → pending)
 export const submitProperty = (id) => {
     return api.patch(`/properties/${id}/submit`);
+};
+
+// ==========================================
+//  Unggulan (Featured) - Seller
+// ==========================================
+
+// Ambil estimasi antrian unggulan
+export const fetchFeaturedQueueEta = () => {
+    return api.get('/seller/featured-queue/eta');
+};
+
+// Inisiasi pembayaran unggulan
+export const initiateFeaturedPayment = (propertyId) => {
+    return api.post(`/seller/properties/${propertyId}/featured`);
+};
+
+// Verifikasi pembayaran unggulan
+export const publishFeaturedProperty = (propertyId) => {
+    return api.patch(`/seller/properties/${propertyId}/featured/publish`);
 };
 
 // ==========================================
@@ -148,6 +172,11 @@ export const rejectProperty = (id, alasan) => {
 // Fetch properti publik (katalog)
 export const fetchPublicProperties = (params = {}) => {
     return api.get('/properties', { params });
+};
+
+// Fetch properti unggulan
+export const fetchFeaturedProperties = () => {
+    return api.get('/properties/featured');
 };
 
 // Fetch detail properti publik berdasarkan slug

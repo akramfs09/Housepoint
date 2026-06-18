@@ -16,6 +16,9 @@ use App\Http\Resources\UserResource;
 use App\Models\SellerAppeal;
 use App\Models\User;
 use App\Models\AdminActionLog;
+use App\Notifications\SellerVerificationNotification;
+use App\Notifications\PropertyModerationNotification;
+use App\Notifications\AppealNotification;
 
 class AdminController extends Controller
 {
@@ -51,6 +54,10 @@ class AdminController extends Controller
     public function approveSeller(SellerProfile $seller)
     {
         $this->sellerService->approve($seller, request()->user());
+
+        // Kirim notifikasi ke seller
+        $seller->user->notify(new SellerVerificationNotification('approved'));
+
         return $this->success(new SellerResource($seller), 'Seller berhasil disetujui.');
     }
 
@@ -58,6 +65,10 @@ class AdminController extends Controller
     {
         $request->validate(['alasan' => 'required|string|max:500']);
         $this->sellerService->reject($seller, $request->user(), $request->alasan);
+
+        // Kirim notifikasi ke seller
+        $seller->user->notify(new SellerVerificationNotification('rejected', $request->alasan));
+
         return $this->success(new SellerResource($seller), 'Seller berhasil ditolak.');
     }
 
@@ -83,6 +94,12 @@ class AdminController extends Controller
     {
         try {
             $this->propertyService->approve($property);
+
+            // Kirim notifikasi ke seller
+            $property->sellerProfile->user->notify(
+                new PropertyModerationNotification($property, 'approved')
+            );
+
             return $this->success(null, 'Properti berhasil disetujui.');
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 400);
@@ -94,6 +111,12 @@ class AdminController extends Controller
         $request->validate(['alasan' => 'required|string|max:500']);
         try {
             $this->propertyService->reject($property, $request->alasan);
+
+            // Kirim notifikasi ke seller
+            $property->sellerProfile->user->notify(
+                new PropertyModerationNotification($property, 'rejected', $request->alasan)
+            );
+
             return $this->success(null, 'Properti berhasil ditolak.');
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 400);
@@ -151,12 +174,22 @@ class AdminController extends Controller
     public function approveAppeal(SellerAppeal $appeal)
     {
         $this->sellerService->approveAppeal($appeal, request()->user());
+
+        // Notifikasi ke seller
+        $appeal->sellerProfile->user->notify(new AppealNotification('approved'));
+
         return $this->success(null, 'Banding disetujui. Seller mendapat 1 kesempatan tambahan.');
     }
 
     public function rejectAppeal(Request $request, SellerAppeal $appeal)
     {
         $this->sellerService->rejectAppeal($appeal, request()->user(), $request->catatan_internal);
+
+        // Notifikasi ke seller
+        $appeal->sellerProfile->user->notify(
+            new AppealNotification('rejected', $request->catatan_internal)
+        );
+
         return $this->success(null, 'Banding ditolak.');
     }
 

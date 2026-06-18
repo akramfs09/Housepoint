@@ -2,9 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Resources\PropertyImageResource;
 use App\Http\Resources\UserResource;
 
@@ -12,13 +13,22 @@ class PropertyResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $user = $request->user();
+        $user = $request->user() ?: Auth::guard('sanctum')->user();
         $isAdmin = $user && in_array($user->role?->nama_role, ['admin', 'super_admin']);
         $isOwner = $user && $user->sellerProfile?->id === $this->seller_id;
         $mainImage = $this->image_main ?: $this->firstGalleryImagePath();
+        $featuredListing = $this->relationLoaded('currentFeaturedListing')
+            ? $this->currentFeaturedListing
+            : null;
 
         return [
             'id'             => $this->id,
+            // ✅ Selalu tampilkan is_favorited, default false jika guest
+            'is_favorited'   => $user
+                ? ($this->relationLoaded('favoritedByUsers')
+                    ? $this->favoritedByUsers->contains('id', $user->id)
+                    : $this->favoritedByUsers()->where('user_id', $user->id)->exists())
+                : false,
             'title'          => $this->title,
             'slug'           => $this->slug,
             'description'    => $this->description,
@@ -46,8 +56,19 @@ class PropertyResource extends JsonResource
             'edit_count'     => $this->when($isOwner || $isAdmin, $this->edit_count),
             'published_at'   => $this->published_at,
             'alasan_tolak'   => $this->when($isOwner || $isAdmin, $this->alasan_tolak),
-            'seller_id'      => $this->when($isAdmin, $this->seller_id),
+            'seller_id'      => $this->seller_id,
+            'featured_status' => $featuredListing?->status,
+            'featured_queue_position' => $featuredListing && $featuredListing->status === 'paid'
+                ? $this->featuredQueuePosition($featuredListing)
+                : null,
             'seller'         => new UserResource($this->whenLoaded('sellerProfile.user')),
+            'sellerProfile'  => $this->whenLoaded('sellerProfile', fn () => [
+                'id' => $this->sellerProfile->id,
+                'nama_lengkap' => $this->sellerProfile->nama_lengkap,
+                'nama_toko' => $this->sellerProfile->nama_toko,
+                'deskripsi' => $this->sellerProfile->deskripsi,
+                'foto_toko' => PublicStorageUrl::make($this->sellerProfile->foto_toko),
+            ]),
             'images'         => PropertyImageResource::collection($this->whenLoaded('images')),
             'created_at'     => $this->created_at,
         ];
@@ -68,10 +89,19 @@ class PropertyResource extends JsonResource
             return null;
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
+        return PublicStorageUrl::make($path);
+    }
+
+    private function featuredQueuePosition($featuredListing): ?int
+    {
+        if (! $featuredListing->queued_at) {
+            return null;
         }
 
-        return Storage::disk('r2_public')->url($path);
+        return $featuredListing->newQuery()
+            ->where('status', 'paid')
+            ->whereNotNull('queued_at')
+            ->where('queued_at', '<=', $featuredListing->queued_at)
+            ->count();
     }
 }

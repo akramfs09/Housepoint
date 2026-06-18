@@ -28,20 +28,25 @@ const ProfileDropdown = () => {
     // Menu berdasarkan role
     const menuItems = {
         customer: [
-            { label: '👤 Profil Saya', path: '/customer/dashboard' },
-            { label: '❤️ Properti Favorit', path: '#', disabled: true, soon: true },
-            { label: '💬 Pesan', path: '/chat' },
             { label: '🏠 Jual Propertimu', path: '/customer/become-seller' },
-            { label: '⏱️ Riwayat Pencarian', path: '#', disabled: true, soon: true },
-            { label: '🏪 Upgrade Seller', path: '/customer/become-seller' },
-            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
+            { label: '📈 Statistik Properti', path: '/customer/become-seller' },
+            { label: '👤 Profil Saya', path: '/customer/profile' },
+            { label: '💬a Pesan', path: '/chat' },
+            { label: '❤️a Properti Favorit', path: '/favorites' },
+            { label: '⏱️ Riwayat', path: '#', disabled: true, soon: true },
+            { label: '🔔a Notifikasi', path: '/notifications' },
             { label: '⚙️ Pengaturan Akun', path: '#', disabled: true, soon: true },
         ],
         seller: [
+            { label: '📋 Jual Property', path: '/seller/properties', icon: '📋' },
+            { label: '📈 Statistik Properti', path: '/seller/stats' },
             { label: '📊 Dashboard Seller', path: '/seller/dashboard' },
-            { label: '📋 Kelola Properti', path: '/seller/properties', icon: '📋' },
+            { label: '👤 Profil Saya', path: '/seller/profile' },
             { label: '💬 Pesan', path: '/chat' },
-            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
+            { label: '❤️ Properti Favorit', path: '/favorites' },
+            { label: '⏱️ Riwayat', path: '#', disabled: true, soon: true },
+            { label: '🔔 Notifikasi', path: '/notifications' },
+            { label: '🏪 Profil Toko', path: '/seller/store' },
             { label: '⚙️ Pengaturan Akun', path: '#', disabled: true, soon: true },
         ],
         admin: [
@@ -50,8 +55,8 @@ const ProfileDropdown = () => {
             { label: '🏠 Moderasi Properti', path: '/admin/properties', icon: '🏠' },
             { label: '👥 Kelola User', path: '/admin/users' },
             { label: '📋 Log Aktivitas', path: '/admin/activity-logs' },
+            { label: '🔔 Notifikasi', path: '/notifications' },
             { label: '🚩 Kelola Laporan', path: '#', disabled: true, soon: true },
-            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
         ],
         super_admin: [
             { label: '📊 Dashboard Super Admin', path: '/admin/dashboard' },
@@ -61,8 +66,8 @@ const ProfileDropdown = () => {
             { label: '👤 Kelola Admin Lain', path: '/admin/admins' },
             { label: '📋 Log Aktivitas', path: '/admin/activity-logs' },
             { label: '📋 Audit Log', path: '/admin/admins/audit-logs' },
+            { label: '🔔 Notifikasi', path: '/notifications' },
             { label: '🚩 Kelola Laporan', path: '#', disabled: true, soon: true },
-            { label: '🔔 Notifikasi', path: '#', disabled: true, soon: true },
         ],
     };
 

@@ -67,8 +67,34 @@ class Property extends Model
         return $this->hasMany(PropertyImage::class)->orderBy('order');
     }
 
+    /**
+     * User yang memfavoritkan properti ini.
+     */
+    public function favoritedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'favorites')
+                    ->withTimestamps();
+    }
+
     public function scopePublished($query)
     {
         return $query->where('status', 'published');
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class);
+    }
+
+    public function featuredListings()
+    {
+        return $this->hasMany(FeaturedListing::class);
+    }
+
+    public function currentFeaturedListing()
+    {
+        return $this->hasOne(FeaturedListing::class)
+            ->whereIn('status', ['pending', 'paid', 'active'])
+            ->latestOfMany();
     }
 }

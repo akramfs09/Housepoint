@@ -64,4 +64,13 @@ class User extends Authenticatable
     {
         return $this->hasMany(Message::class);
     }
+
+    /**
+     * Properti yang difavoritkan oleh user.
+     */
+    public function favorites()
+    {
+        return $this->belongsToMany(Property::class, 'favorites')
+                    ->withTimestamps();
+    }
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { fetchPublicPropertyDetail } from '../../services/api';
-import api from '../../services/api'; // untuk chat
+import api from '../../services/api'; // untuk chat dan favorit
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { useAuth } from '../../hooks/useAuth';
@@ -96,6 +96,10 @@ const PropertyDetail = () => {
     const [selectedImage, setSelectedImage] = useState(null);
     const [contactLoading, setContactLoading] = useState(false);
 
+    // State Favorit
+    const [isFavorited, setIsFavorited] = useState(false);
+    const [favoriteLoading, setFavoriteLoading] = useState(false);
+
     useEffect(() => {
         const load = async () => {
             try {
@@ -116,6 +120,13 @@ const PropertyDetail = () => {
         };
         load();
     }, [slug]);
+
+    // Sinkronkan isFavorited setelah properti dimuat
+    useEffect(() => {
+        if (property) {
+            setIsFavorited(property.is_favorited ?? false);
+        }
+    }, [property]);
 
     const formatPrice = (p) =>
         new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(p);
@@ -149,8 +160,38 @@ const PropertyDetail = () => {
         }
     };
 
+    // Handler Favorit
+    const handleToggleFavorite = async () => {
+        if (!user) {
+            toast.error('Silakan login terlebih dahulu.');
+            navigate('/login');
+            return;
+        }
+
+        if (user.role === 'admin' || user.role === 'super_admin') {
+            return;
+        }
+
+        setFavoriteLoading(true);
+        try {
+            const { data } = await api.post(`/properties/${property.id}/favorite`);
+            const newFavorited = data.data.is_favorited;
+            setIsFavorited(newFavorited);
+            // Update juga property object agar konsisten
+            setProperty(prev => ({ ...prev, is_favorited: newFavorited }));
+            toast.success(data.message);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal mengubah favorit.');
+        } finally {
+            setFavoriteLoading(false);
+        }
+    };
+
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#efe6d5]"><Navbar /><p>Memuat...</p></div>;
     if (!property) return <div className="min-h-screen flex items-center justify-center bg-[#efe6d5]"><Navbar /><p>Properti tidak ditemukan.</p></div>;
+
+    const sellerStore = property.sellerProfile;
+    const sellerName = property.seller?.name || sellerStore?.nama_lengkap || 'Seller';
 
     return (
         <div className="min-h-screen bg-[#efe6d5] text-[#2c2c2c] font-sans">
@@ -203,6 +244,28 @@ const PropertyDetail = () => {
                                         alt={`Gallery ${i + 1}`}
                                     />
                                 ))}
+                            </div>
+                        )}
+
+                        {/* Container Toko */}
+                        {sellerStore && (
+                            <div className="bg-white rounded-2xl p-4 shadow-md flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden border border-[#e5d8c0] flex-shrink-0">
+                                        {sellerStore.foto_toko ? (
+                                            <img src={sellerStore.foto_toko} className="w-full h-full object-cover" alt="Foto Toko" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-xl text-gray-400">🏪</div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-sm text-[#2c2c2c]">{sellerStore.nama_toko || 'Tanpa Nama Toko'}</p>
+                                        <p className="text-xs text-gray-500">{sellerName}</p>
+                                    </div>
+                                </div>
+                                <Link to={`/store/${sellerStore.id}`} className="text-sm text-[#C5A065] hover:underline font-medium flex-shrink-0">
+                                    Lihat Semua &rarr;
+                                </Link>
                             </div>
                         )}
 
@@ -284,7 +347,18 @@ const PropertyDetail = () => {
                                 className="w-full bg-[#d49b37] text-white py-3 rounded-xl font-bold text-lg mb-2 hover:bg-[#c08a2c] transition disabled:opacity-50">
                                 {contactLoading ? 'Memproses...' : '💬 Hubungi Seller'}
                             </button>
-                            <button className="w-full border border-[#d49b37] text-[#d49b37] py-3 rounded-xl font-bold text-lg">❤️ Simpan ke Favorit</button>
+                            {/* Tombol Favorit */}
+                            <button
+                                onClick={handleToggleFavorite}
+                                disabled={favoriteLoading}
+                                className={`w-full border py-3 rounded-xl font-bold text-lg transition ${
+                                    isFavorited
+                                        ? 'bg-red-50 border-red-400 text-red-500'
+                                        : 'border-[#d49b37] text-[#d49b37] hover:bg-[#d49b37] hover:text-white'
+                                } disabled:opacity-50`}
+                            >
+                                {favoriteLoading ? 'Memproses...' : isFavorited ? '❤️ Tersimpan' : '🤍 Simpan ke Favorit'}
+                            </button>
                         </div>
 
                         {property.seller && (
@@ -299,8 +373,8 @@ const PropertyDetail = () => {
                                         <p className="text-xs text-gray-500">{property.seller.email}</p>
                                     </div>
                                 </div>
-                                {property.seller.sellerProfile?.nama_toko && <p className="text-sm text-gray-600 mt-2">🏪 {property.seller.sellerProfile.nama_toko}</p>}
-                                {property.seller.sellerProfile?.deskripsi && <p className="text-sm text-gray-500 mt-2">{property.seller.sellerProfile.deskripsi}</p>}
+                                {sellerStore?.nama_toko && <p className="text-sm text-gray-600 mt-2">🏪 {sellerStore.nama_toko}</p>}
+                                {sellerStore?.deskripsi && <p className="text-sm text-gray-500 mt-2">{sellerStore.deskripsi}</p>}
                             </div>
                         )}
                     </div>
@@ -313,3 +387,4 @@ const PropertyDetail = () => {
 };
 
 export default PropertyDetail;
+

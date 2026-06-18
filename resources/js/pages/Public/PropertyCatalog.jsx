@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { fetchPublicProperties } from '../../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { fetchPublicProperties, fetchFeaturedProperties } from '../../services/api';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import PropertyCard from '../../components/common/PropertyCard';
@@ -21,7 +21,16 @@ const SORT_OPTIONS = [
     { value: 'popular', label: 'Paling Populer' },
 ];
 
+const normalizeResourceList = (value) => {
+    if (Array.isArray(value)) return value;
+    if (Array.isArray(value?.data)) return value.data;
+    return [];
+};
+
 const PropertyCatalog = () => {
+    const [featured, setFeatured] = useState([]);
+    const [popular, setPopular] = useState([]);
+    const [favorited, setFavorited] = useState([]);
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState(null);
@@ -38,31 +47,56 @@ const PropertyCatalog = () => {
         page: 1,
     });
 
-    const loadProperties = async (page = 1) => {
+    // Ambil properti unggulan
+    useEffect(() => {
+        const loadFeatured = async () => {
+            try {
+                const { data } = await fetchFeaturedProperties();
+                setFeatured(normalizeResourceList(data));
+            } catch {}
+        };
+        loadFeatured();
+    }, []);
+
+    const loadProperties = useCallback(async (page, currentFilters) => {
         setLoading(true);
         try {
-            const params = { ...filters, page, per_page: 12 };
+            const params = { ...currentFilters, page, per_page: 12 };
             Object.keys(params).forEach(key => {
                 if (params[key] === '' || params[key] === null) delete params[key];
             });
 
             const { data } = await fetchPublicProperties(params);
-            setProperties(data.data || []);
+            
+            // Tangkap data section populer & favorit
+            setPopular(normalizeResourceList(data.popular));
+            setFavorited(normalizeResourceList(data.favorited));
+            
+            const allData = data.data?.data || data.data || [];
+            setProperties(Array.isArray(allData) ? allData : []);
             setPagination({
-                currentPage: data.meta?.current_page || 1,
-                lastPage: data.meta?.last_page || 1,
-                total: data.meta?.total || 0,
+                currentPage: data.data?.meta?.current_page || 1,
+                lastPage: data.data?.meta?.last_page || 1,
+                total: data.data?.meta?.total || 0,
             });
         } catch (error) {
             toast.error('Gagal memuat katalog properti.');
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        loadProperties(1);
-    }, [filters]);
+        loadProperties(filters.page, filters);
+    }, [filters, loadProperties]);
+
+    const handleFavoriteChange = useCallback((propertyId, isFavorited) => {
+        const update = prev => prev.map(p => p.id === propertyId ? { ...p, is_favorited: isFavorited } : p);
+        setFeatured(update);
+        setPopular(update);
+        setFavorited(update);
+        setProperties(update);
+    }, []);
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
@@ -70,7 +104,6 @@ const PropertyCatalog = () => {
 
     const handlePageChange = (page) => {
         setFilters(prev => ({ ...prev, page }));
-        loadProperties(page);
     };
 
     return (
@@ -86,6 +119,51 @@ const PropertyCatalog = () => {
             </div>
 
             <div className="max-w-7xl mx-auto py-8 px-4">
+                {/* ===== SECTION: UNGGULAN ===== */}
+                {featured.length > 0 && (
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold mb-4">🌟 Unggulan</h2>
+                        <div className="flex gap-4 overflow-x-auto pb-4">
+                            {featured.map(p => (
+                                <div key={p.id} className="min-w-[280px] max-w-[280px] flex-shrink-0">
+                                    <PropertyCard property={p} mode="public" onFavoriteChange={handleFavoriteChange} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== SECTION: TERPOPULER ===== */}
+                {popular.length > 0 && (
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold mb-4">🔥 Terpopuler Minggu Ini</h2>
+                        <div className="flex gap-4 overflow-x-auto pb-4">
+                            {popular.map(p => (
+                                <div key={p.id} className="min-w-[280px] max-w-[280px] flex-shrink-0">
+                                    <PropertyCard property={p} mode="public" onFavoriteChange={handleFavoriteChange} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== SECTION: TERFAVORIT ===== */}
+                {favorited.length > 0 && (
+                    <div className="mb-10">
+                        <h2 className="text-2xl font-bold mb-4">❤️ Terfavorit Minggu Ini</h2>
+                        <div className="flex gap-4 overflow-x-auto pb-4">
+                            {favorited.map(p => (
+                                <div key={p.id} className="min-w-[280px] max-w-[280px] flex-shrink-0">
+                                    <PropertyCard property={p} mode="public" onFavoriteChange={handleFavoriteChange} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ===== SECTION: SEMUA + FILTER ===== */}
+                <h2 className="text-2xl font-bold mb-6">Semua Properti</h2>
+                
                 <div className="flex flex-col lg:flex-row gap-6">
                     {/* Sidebar Filter */}
                     <div className="lg:w-72 flex-shrink-0">
@@ -181,7 +259,7 @@ const PropertyCatalog = () => {
                             <>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                                     {properties.map(p => (
-                                        <PropertyCard key={p.id} property={p} mode="public" />
+                                        <PropertyCard key={p.id} property={p} mode="public" onFavoriteChange={handleFavoriteChange} />
                                     ))}
                                 </div>
 

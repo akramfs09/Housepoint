@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Model;
 
 class CustomerProfile extends Model
@@ -13,6 +14,7 @@ class CustomerProfile extends Model
         'tanggal_lahir',
         'jenis_kelamin',
         'pekerjaan',
+        'foto_profil',   // ← tambahkan ini
     ];
 
     protected $casts = [
@@ -22,5 +24,10 @@ class CustomerProfile extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getFotoProfilUrlAttribute()
+    {
+        return PublicStorageUrl::make($this->foto_profil);
     }
 }

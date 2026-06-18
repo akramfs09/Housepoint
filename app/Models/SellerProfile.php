@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -17,11 +18,12 @@ class SellerProfile extends Model
         'nama_toko',  
         'no_hp',
         'alamat',
-        'foto_toko',           // ← tambahkan ini
+        'foto_toko',           
         'deskripsi',
         'syarat_ketentuan',
         'no_hp_verified',
         'rekening',
+        'foto_profil',
     ];
 
     protected $casts = [
@@ -34,6 +36,16 @@ class SellerProfile extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getFotoTokoUrlAttribute()
+    {
+        return PublicStorageUrl::make($this->foto_toko);
+    }
+
+    public function getFotoProfilUrlAttribute()
+    {
+        return PublicStorageUrl::make($this->foto_profil);
     }
 
     public function verifier()

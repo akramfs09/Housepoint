@@ -2,9 +2,9 @@
 
 namespace App\Http\Resources;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class PropertyImageResource extends JsonResource
 {
@@ -25,10 +25,6 @@ class PropertyImageResource extends JsonResource
             return null;
         }
 
-        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
-            return $path;
-        }
-
-        return Storage::disk('r2_public')->url($path);
+        return PublicStorageUrl::make($path);
     }
 }

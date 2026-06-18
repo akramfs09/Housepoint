@@ -1,5 +1,9 @@
 // resources/js/components/common/PropertyCard.jsx
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import api from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
+import { toast } from 'react-hot-toast';
 
 const STATUS_BADGE = {
     draft: { color: 'bg-gray-400', label: 'Draft' },
@@ -17,9 +21,27 @@ const TYPE_LABEL = {
     gedung: 'Gedung',
 };
 
-const PropertyCard = ({ property, mode = 'public', onAction }) => {
+const FEATURED_STATUS = {
+    pending: 'Pembayaran unggulan menunggu konfirmasi',
+    paid: 'Masuk antrian unggulan',
+    active: 'Sedang tampil sebagai unggulan',
+};
+
+const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const isSeller = mode === 'seller';
+    const isPublic = mode === 'public';
+    const canUseFavorite = !user || user.role === 'customer' || user.role === 'seller';
     const badge = STATUS_BADGE[property.status] || STATUS_BADGE.published;
+
+    // State favorit
+    const [isFavorited, setIsFavorited] = useState(property.is_favorited ?? false);
+    const [favLoading, setFavLoading] = useState(false);
+
+    useEffect(() => {
+        setIsFavorited(property.is_favorited ?? false);
+    }, [property.is_favorited]);
 
     const formatPrice = (price) => {
         if (typeof price === 'number') {
@@ -32,15 +54,12 @@ const PropertyCard = ({ property, mode = 'public', onAction }) => {
         if (property.status === 'published' && property.slug) {
             return `/property/${property.slug}`;
         }
-
         if (['draft', 'rejected'].includes(property.status)) {
             return `/seller/properties/${property.id}/edit`;
         }
-
         if (property.status === 'approved') {
             return `/seller/properties/${property.id}/pay`;
         }
-
         return null;
     };
 
@@ -65,12 +84,38 @@ const PropertyCard = ({ property, mode = 'public', onAction }) => {
         if (!linkTo) {
             return <div className={className || linkedClassName}>{children}</div>;
         }
-
         return (
             <Link to={linkTo} className={className}>
                 {children}
             </Link>
         );
+    };
+
+    const handleFavoriteClick = async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user) {
+            toast.error('Silakan login terlebih dahulu.');
+            navigate('/login');
+            return;
+        }
+        if (user.role === 'admin' || user.role === 'super_admin') {
+            return;
+        }
+        setFavLoading(true);
+        try {
+            const { data } = await api.post(`/properties/${property.id}/favorite`);
+            const newStatus = data.data.is_favorited;
+            setIsFavorited(newStatus);
+            if (onFavoriteChange) {
+                onFavoriteChange(property.id, newStatus);
+            }
+            toast.success(data.message);
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal mengubah favorit.');
+        } finally {
+            setFavLoading(false);
+        }
     };
 
     return (
@@ -91,13 +136,21 @@ const PropertyCard = ({ property, mode = 'public', onAction }) => {
                     {badge.label}
                 </div>
 
-                {/* Tombol Favorit (TODO) */}
-                <button
-                    className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/95 flex items-center justify-center text-[#d85f6a] shadow-md text-lg hover:scale-110 transition cursor-not-allowed"
-                    title="Favorit (segera hadir)"
-                >
-                    ♡
-                </button>
+                {/* Tombol Favorit (hanya untuk mode public dan properti published) */}
+                {isPublic && property.status === 'published' && canUseFavorite && (
+                    <button
+                        onClick={handleFavoriteClick}
+                        disabled={favLoading}
+                        className={`absolute top-4 right-4 w-10 h-10 rounded-full shadow-md flex items-center justify-center text-lg transition ${
+                            isFavorited
+                                ? 'bg-red-500 text-white hover:bg-red-600'
+                                : 'bg-white/95 text-[#d85f6a] hover:scale-110'
+                        } ${favLoading ? 'opacity-50 cursor-wait' : ''}`}
+                        title={isFavorited ? 'Hapus dari favorit' : 'Simpan ke favorit'}
+                    >
+                        {isFavorited ? '❤️' : '🤍'}
+                    </button>
+                )}
             </div>
 
             {/* Konten */}
@@ -199,6 +252,20 @@ const PropertyCard = ({ property, mode = 'public', onAction }) => {
                                     <span className="block text-center text-xs text-gray-400 italic">
                                         Batas edit sudah habis
                                     </span>
+                                )}
+                                {/* Tombol Upgrade ke Unggulan */}
+                                {property.featured_status ? (
+                                    <div className="w-full bg-purple-50 border border-purple-200 text-purple-700 py-2 px-3 rounded-lg text-[13px] font-medium text-center">
+                                        {FEATURED_STATUS[property.featured_status] || 'Terdaftar unggulan'}
+                                        {property.featured_queue_position ? ` (#${property.featured_queue_position})` : ''}
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => onAction?.('featured', property.id)}
+                                        className="w-full bg-purple-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-purple-700 transition"
+                                    >
+                                        Upgrade ke Unggulan
+                                    </button>
                                 )}
                             </div>
                         )}

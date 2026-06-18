@@ -8,6 +8,11 @@ use App\Http\Controllers\Api\PublicPropertyController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\CustomerProfileController;
+use App\Http\Controllers\Api\SellerProfileController;
+use App\Http\Controllers\Api\SellerStoreController;
+use App\Http\Controllers\Api\StoreController;
 use Illuminate\Support\Facades\Route;
 
 // ================================================
@@ -15,6 +20,27 @@ use Illuminate\Support\Facades\Route;
 // ================================================
 Route::get('/locations/provinces', [LocationController::class, 'provinces']);
 Route::get('/locations/cities', [LocationController::class, 'cities']);
+
+// ================================================
+//  Halaman Toko Seller (publik)
+// ================================================
+Route::get('/store/{seller}', [StoreController::class, 'show']);
+
+// ================================================
+//  Katalog Unggulan (publik)
+// ================================================
+Route::get('/properties/featured', [PublicPropertyController::class, 'featured']);
+
+// ================================================
+//  Favorit Properti (Customer & Seller)
+//  Diletakkan SEBELUM katalog publik agar route
+//  POST /properties/{property}/favorite tidak
+//  ditangkap oleh GET /properties/{slug}
+// ================================================
+Route::middleware(['auth:sanctum', 'banned', 'role:customer,seller'])->group(function () {
+    Route::post('/properties/{property}/favorite', [PublicPropertyController::class, 'toggleFavorite']);
+    Route::get('/favorites', [PublicPropertyController::class, 'favorites']);
+});
 
 // ================================================
 //  Katalog Publik (tanpa autentikasi)
@@ -53,7 +79,37 @@ Route::get('/user', [AuthController::class, 'me'])
     ->middleware(['auth:sanctum', 'banned']);
 
 // ================================================
+//  Notifikasi (Semua Role yang Login)
+// ================================================
+Route::middleware(['auth:sanctum', 'banned'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+});
+
+// ================================================
+//  Profil (Customer & Seller)
+// ================================================
+Route::middleware(['auth:sanctum', 'banned'])->group(function () {
+    // Profil Customer
+    Route::middleware('role:customer')->group(function () {
+        Route::get('/customer/profile', [CustomerProfileController::class, 'show']);
+        Route::post('/customer/profile', [CustomerProfileController::class, 'update']);
+    });
+
+    // Profil Seller
+    Route::middleware('role:seller')->group(function () {
+        Route::get('/seller/profile', [SellerProfileController::class, 'show']);
+        Route::post('/seller/profile', [SellerProfileController::class, 'update']);
+        Route::get('/seller/store', [SellerStoreController::class, 'show']);
+        Route::post('/seller/store', [SellerStoreController::class, 'update']);
+    });
+});
+
+// ================================================
 //  Chat (Customer & Seller)
+// ================================================
 Route::middleware(['auth:sanctum', 'banned', 'role:customer,seller'])->prefix('chat')->group(function () {
     Route::post('/start', [ChatController::class, 'start']);
     Route::get('/conversations', [ChatController::class, 'index']);
@@ -80,17 +136,25 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
         ->middleware(['role:customer,seller']);
 
     Route::middleware(['role:seller', 'approved_seller'])->group(function () {
+        // Dashboard statistik
+        Route::get('/seller/dashboard', [SellerController::class, 'dashboard']);
+        
         Route::post('/seller/properties', [SellerController::class, 'store']);
         Route::put('/seller/properties/{property}', [SellerController::class, 'update']);
         Route::delete('/seller/properties/{property}', [SellerController::class, 'destroy']);
         Route::get('/seller/properties', [SellerController::class, 'myProperties']);
         Route::patch('/properties/{property}/submit', [SellerController::class, 'submit']);
         
-        // Pembayaran
+        // Pembayaran (Upload Properti)
         Route::post('/seller/properties/{property}/pay', [SellerController::class, 'initiatePayment']);
-        
-        // Publish properti setelah bayar
         Route::patch('/seller/properties/{property}/publish', [SellerController::class, 'publishProperty']);
+
+        // ================================================
+        //  Unggulan (Featured)
+        // ================================================
+        Route::get('/seller/featured-queue/eta', [SellerController::class, 'featuredQueueEta']);
+        Route::post('/seller/properties/{property}/featured', [SellerController::class, 'initiateFeaturedPayment']);
+        Route::patch('/seller/properties/{property}/featured/publish', [SellerController::class, 'publishFeatured']);
     });
 });
 
