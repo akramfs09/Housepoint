@@ -30,148 +30,167 @@ const ForgotPasswordPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDF5E2] flex flex-col">
-            {/* MAIN */}
-            <div className="flex flex-1">
-                {/* LEFT HERO */}
-                <div className="relative w-[550px] hidden lg:block overflow-hidden">
-                    <img
-                        src="/images/property-login.jpg"
-                        alt="House"
-                        className="w-full h-full object-cover rounded-tr-[300px]"
-                    />
+        <div className="min-h-screen bg-[#FDF6E2] flex flex-col justify-between font-sans antialiased select-none selection:bg-[#D4A44C]/30 relative overflow-x-hidden">
+            
+            {/* 1. BACKGROUND HERO (Sisi Kiri, Melengkung di Kanan Atas - Presisi Sesuai Login) */}
+            <div className="absolute left-0 top-0 bottom-0 w-full lg:w-[42%] h-[45vh] lg:h-full z-0 overflow-hidden rounded-br-[120px] lg:rounded-br-none lg:rounded-tr-[380px] shadow-[12px_0_30px_rgba(0,0,0,0.04)]">
+                <img
+                    src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop"
+                    alt="Property Background"
+                    className="w-full h-full object-cover transform scale-105 hover:scale-110 transition-transform duration-700"
+                />
+                {/* Overlay gelap gradasi agar teks putih kontras */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/35 mix-blend-multiply" />
+            </div>
 
-                    <div className="absolute inset-0 bg-black/50 rounded-tr-[300px]" />
+            {/* 2. LOGO UTAMA */}
+            <div className="w-full h-[95px] px-6 lg:px-[100px] flex items-center z-30 relative">
+                <img
+                    src="/logo.png"
+                    alt="HousePoint"
+                    className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 cursor-pointer"
+                />
+            </div>
 
-                    {/* Logo */}
-                    <div className="absolute top-12 left-16 z-10">
-                        <img
-                            src="/logo.png"
-                            alt="HousePoint"
-                            className="h-12 object-contain"
-                        />
-                    </div>
-
-                    {/* Hero Text */}
-                    <div className="absolute left-20 top-1/2 -translate-y-1/2 text-white z-10">
-                        <h1 className="text-5xl font-bold leading-tight mb-6">
-                            Temukan Rumah
-                            <br />
+            {/* 3. AREA UTAMA KONTEN GRID */}
+            <div className="flex-1 w-full max-w-[1440px] mx-auto px-6 lg:px-[100px] pt-4 lg:pt-0 pb-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 relative">
+                
+                {/* Bagian Kiri: Tempat Susunan Teks di Atas Latar Belakang */}
+                <div className="col-span-1 lg:col-span-4 flex flex-col justify-center min-h-[200px] lg:min-h-0 lg:pr-4 z-20">
+                    <div className="z-10 text-white animate-fade-in-left space-y-4 lg:pl-4 max-w-sm">
+                        <h1 className="text-4xl lg:text-[42px] font-bold leading-tight tracking-wide text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
+                            Temukan Rumah <br />
                             Impian Anda
                         </h1>
-
-                        <p className="text-xl leading-relaxed font-medium">
-                            Masuk untuk menyimpan properti
-                            <br />
-                            favorit dan menghubungi penjual
-                            <br />
-                            dengan mudah
+                        <p className="text-sm lg:text-base text-gray-200 font-medium leading-relaxed opacity-95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
+                            Masuk untuk menyimpan properti favorit dan menghubungi penjual dengan mudah.
                         </p>
                     </div>
                 </div>
 
-                {/* CENTER FORM */}
-                <div className="flex-1 flex items-center justify-center px-6 py-10">
-                    <div className="w-full max-w-[520px]">
-                        <div className="bg-white rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.25)] p-8">
-                            <h2 className="text-center text-3xl font-bold mb-4">
-                                Atur Ulang Password
-                            </h2>
+                {/* Bagian Tengah: Formulir Utama Lupa Password */}
+                <div className="col-span-1 lg:col-span-5 flex justify-center z-20 lg:pl-6">
+                    <div className="w-full max-w-[450px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(139,115,85,0.15)] border border-amber-100/40 p-8 lg:p-9 transform hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-between min-h-[580px]">
+                        
+                        <div>
+                            {/* Judul Tab Formulir */}
+                            <div className="flex items-center justify-center gap-3 text-xl lg:text-2xl font-bold tracking-tight mb-3">
+                                <span className="text-[#D4A44C] border-b-2 border-[#D4A44C] pb-0.5 cursor-default">
+                                    Atur Ulang Password
+                                </span>
+                            </div>
 
-                            <p className="text-center text-sm text-gray-500 mb-8">
-                                Masukkan Email Anda agar kami dapat memberikan
-                                instruksi untuk mengatur ulang password Anda.
+                            <p className="text-center text-gray-500 text-xs sm:text-sm max-w-[320px] mx-auto leading-relaxed mb-6">
+                                Masukkan Email Anda agar kami dapat memberikan instruksi untuk mengatur ulang password Anda.
                             </p>
 
                             {error && (
-                                <div className="bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg p-3 mb-4">
+                                <div className="mb-4 bg-red-50 border border-red-200 text-red-600 text-xs sm:text-sm rounded-xl p-3 text-center font-medium animate-shake">
                                     {error}
                                 </div>
                             )}
 
-                            <form onSubmit={handleSubmit}>
-                                <div className="mb-6">
-                                    <label className="block font-semibold mb-3">
+                            {/* Form Input Container */}
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                {/* Field: Email */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-sm font-semibold text-gray-800">
                                         Email
                                     </label>
-
                                     <input
                                         type="email"
                                         value={email}
-                                        onChange={(e) =>
-                                            setEmail(e.target.value)
-                                        }
+                                        onChange={(e) => setEmail(e.target.value)}
                                         placeholder="Masukkan Email anda"
                                         required
-                                        className="w-full h-12 rounded-lg border border-[#D4A44C] px-4 focus:outline-none focus:ring-2 focus:ring-[#D4A44C]"
+                                        className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-white text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-[#D4A44C]/20 focus:border-[#D4A44C]"
                                     />
                                 </div>
 
+                                {/* Tombol Eksekusi Submit */}
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full h-12 bg-[#D4A44C] hover:bg-[#c5953f] text-white rounded-lg font-medium transition disabled:opacity-50"
+                                    className="w-full h-11 bg-[#D4A44C] hover:bg-[#c1923d] active:scale-[0.98] text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg shadow-amber-700/10 transition-all duration-150 disabled:opacity-50"
                                 >
-                                    {isSubmitting
-                                        ? 'Mengirim...'
-                                        : 'Kirim Verifikasi'}
+                                    {isSubmitting ? 'Mengirim...' : 'Kirim Verifikasi'}
                                 </button>
-
-                                <div className="flex items-center gap-4 my-6">
-                                    <div className="flex-1 border-t border-gray-400"></div>
-                                    <span className="text-sm text-gray-500">
-                                        atau
-                                    </span>
-                                    <div className="flex-1 border-t border-gray-400"></div>
-                                </div>
-
-                                <Link
-                                    to="/login"
-                                    className="w-full h-12 border border-gray-300 rounded-lg flex items-center justify-center text-[#57534E] hover:bg-gray-50 transition"
-                                >
-                                    Kembali Ke Login
-                                </Link>
                             </form>
                         </div>
+
+                        {/* Garis Pembatas Alternatif */}
+                        <div className="my-4 flex items-center justify-center gap-3">
+                            <div className="flex-1 border-t border-gray-200" />
+                            <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">atau</span>
+                            <div className="flex-1 border-t border-gray-200" />
+                        </div>
+
+                        {/* Navigasi Luar & Kembali */}
+                        <div className="space-y-4">
+                            {/* Tombol Kembali Ke Login */}
+                            <Link
+                                to="/login"
+                                className="w-full h-11 border border-gray-200 hover:border-[#D4A44C] bg-white rounded-xl flex items-center justify-center gap-2.5 text-sm font-bold text-gray-700 hover:bg-amber-50/20 active:scale-[0.98] transition-all duration-200"
+                            >
+                                Kembali Ke Login
+                            </Link>
+
+                            {/* Tombol Kembali ke Beranda */}
+                            <div className="text-center">
+                                <Link
+                                    to="/"
+                                    className="inline-flex items-center text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors gap-1 hover:underline"
+                                >
+                                    <span>←</span> Kembali ke Beranda
+                                </Link>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
-                {/* RIGHT STATS */}
-                <div className="hidden xl:flex w-[340px] items-center justify-center">
-                    <div className="space-y-8">
-                        <div className="bg-white rounded-xl p-8 w-[250px] shadow-sm border border-[#D3C4B2]/30">
-                            <div className="text-4xl font-semibold text-[#1F1B15]">
-                                1,200+
+                {/* Bagian Kanan: Panel Daftar Statistik Real Estate */}
+                <div className="col-span-1 lg:col-span-3 flex flex-col gap-4 w-full max-w-[280px] mx-auto lg:ml-auto lg:mr-0 animate-fade-in-right">
+                    {[
+                        { 
+                            val: '1,200+', 
+                            lbl: 'Properti Eksklusif',
+                            icon: <svg className="w-6 h-6 text-[#D4A44C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg> 
+                        },
+                        { 
+                            val: '4,500+', 
+                            lbl: 'Pengguna Aktif',
+                            icon: <svg className="w-6 h-6 text-[#D4A44C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> 
+                        },
+                        { 
+                            val: '150+', 
+                            lbl: 'Agen Berlisensi',
+                            icon: <svg className="w-6 h-6 text-[#D4A44C]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> 
+                        },
+                    ].map((item, idx) => (
+                        <div
+                            key={idx}
+                            className="w-full h-24 bg-white/90 backdrop-blur-sm rounded-2xl border border-amber-100 px-6 flex items-center gap-4 shadow-[0_8px_20px_rgba(197,160,101,0.06)] hover:shadow-md hover:border-amber-200 transition-all duration-300 transform hover:scale-[1.02]"
+                        >
+                            <div className="w-12 h-12 rounded-full bg-[#D4A44C]/10 flex items-center justify-center flex-shrink-0">
+                                {item.icon}
                             </div>
-                            <div className="text-sm text-[#4F4537] mt-1">
-                                Properti Eksklusif
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-2xl font-bold text-gray-800 leading-none">
+                                    {item.val}
+                                </h3>
+                                <p className="text-xs text-gray-500 font-medium mt-1 truncate">
+                                    {item.lbl}
+                                </p>
                             </div>
                         </div>
-
-                        <div className="bg-white rounded-xl p-8 w-[250px] shadow-sm border border-[#D3C4B2]/30">
-                            <div className="text-4xl font-semibold text-[#1F1B15]">
-                                4,500+
-                            </div>
-                            <div className="text-sm text-[#4F4537] mt-1">
-                                Pengguna Aktif
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl p-8 w-[250px] shadow-sm border border-[#D3C4B2]/30">
-                            <div className="text-4xl font-semibold text-[#1F1B15]">
-                                150+
-                            </div>
-                            <div className="text-sm text-[#4F4537] mt-1">
-                                Agen Berlisensi
-                            </div>
-                        </div>
-                    </div>
+                    ))}
                 </div>
             </div>
 
-            {/* FOOTER */}
-            <footer className="bg-[#403B2D] py-4 text-center">
-                <p className="text-[#838383] text-sm">
+            {/* 4. FOOTER */}
+            <footer className="w-full h-[60px] bg-[#3B362A] flex items-center justify-center z-20">
+                <p className="text-gray-400 text-xs tracking-wide">
                     © 2026 HousePoint. All rights reserved.
                 </p>
             </footer>

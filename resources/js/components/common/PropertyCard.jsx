@@ -5,10 +5,25 @@ import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 
+// Import Icon Modern dari Lucide React
+import { 
+    Maximize2, 
+    BedDouble, 
+    Bath, 
+    Eye, 
+    Pencil, 
+    UploadCloud, 
+    Trash2, 
+    Clock, 
+    Coins, 
+    Sparkles,
+    Lock
+} from 'lucide-react';
+
 const STATUS_BADGE = {
     draft: { color: 'bg-gray-400', label: 'Draft' },
-    pending: { color: 'bg-yellow-500', label: 'Menunggu Moderasi' },
-    approved: { color: 'bg-blue-500', label: 'Menunggu Pembayaran' },
+    pending: { color: 'bg-amber-500', label: 'Menunggu Moderasi' },
+    approved: { color: 'bg-emerald-600', label: 'Menunggu Pembayaran' },
     published: { color: 'bg-[#d49b37]', label: 'TERSEDIA' },
     rejected: { color: 'bg-red-500', label: 'Ditolak' },
 };
@@ -136,7 +151,7 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                     {badge.label}
                 </div>
 
-                {/* Tombol Favorit (hanya untuk mode public dan properti published) */}
+                {/* Tombol Favorit */}
                 {isPublic && property.status === 'published' && canUseFavorite && (
                     <button
                         onClick={handleFavoriteClick}
@@ -172,14 +187,23 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                     {TYPE_LABEL[property.type] || property.type} • {property.city || property.location || ''}
                 </p>
 
-                {/* Info: Luas, Kamar */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#e4d7c4] text-[13px] text-[#6f685d]">
-                    <span>{property.land_area || '?'} m²</span>
-                    <span>{property.bedrooms || '?'} Kamar</span>
-                    <span>{property.bathrooms || '?'} Bath</span>
+                {/* Info Spek Rumah: Menggunakan Icon Modern Lucide */}
+                <div className="flex items-center justify-between mt-6 pt-4 border-t border-[#e4d7c4] text-[13px] text-[#8b8478]">
+                    <span className="flex items-center gap-1.5">
+                        <Maximize2 className="w-4 h-4 text-[#c08a2c]/80" /> 
+                        {property.land_area || '?'} m²
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <BedDouble className="w-4 h-4 text-[#c08a2c]/80" /> 
+                        {property.bedrooms || '?'} Kamar
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                        <Bath className="w-4 h-4 text-[#c08a2c]/80" /> 
+                        {property.bathrooms || '?'} Bath
+                    </span>
                 </div>
 
-                {/* Alasan Ditolak (Seller Only) */}
+                {/* Alasan Ditolak */}
                 {isSeller && property.status === 'rejected' && property.alasan_tolak && (
                     <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-2 text-red-700 text-[13px]">
                         <strong>Alasan ditolak:</strong> {property.alasan_tolak}
@@ -194,29 +218,29 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                             <>
                                 <button
                                     onClick={() => onAction?.('edit', property.id)}
-                                    className="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-blue-600 transition"
+                                    className="flex items-center gap-1.5 bg-[#c08a2c] text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-[#a37222] transition"
                                 >
-                                    ✏️ Edit
+                                    <Pencil className="w-3.5 h-3.5" /> Edit
                                 </button>
                                 <button
                                     onClick={() => onAction?.('submit', property.id)}
-                                    className="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-yellow-600 transition"
+                                    className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-amber-600 transition"
                                 >
-                                    📤 Ajukan
+                                    <UploadCloud className="w-3.5 h-3.5" /> Ajukan
                                 </button>
                                 <button
                                     onClick={() => onAction?.('delete', property.id)}
-                                    className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-red-600 transition"
+                                    className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-red-600 transition"
                                 >
-                                    🗑️ Hapus
+                                    <Trash2 className="w-3.5 h-3.5" /> Hapus
                                 </button>
                             </>
                         )}
 
                         {/* Pending */}
                         {property.status === 'pending' && (
-                            <span className="text-[13px] text-gray-500 italic">
-                                Menunggu verifikasi admin...
+                            <span className="flex items-center gap-1.5 text-[13px] text-amber-700/70 italic font-medium py-1">
+                                <Clock className="w-4 h-4 animate-pulse" /> Menunggu verifikasi admin...
                             </span>
                         )}
 
@@ -224,9 +248,9 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                         {property.status === 'approved' && (
                             <button
                                 onClick={() => onAction?.('pay', property.id)}
-                                className="w-full bg-green-500 text-white py-2 rounded-lg text-[14px] font-bold hover:bg-green-600 transition"
+                                className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-2 rounded-lg text-[14px] font-bold hover:bg-emerald-700 transition shadow-sm"
                             >
-                                💰 Bayar Sekarang
+                                <Coins className="w-4 h-4" /> Bayar Sekarang
                             </button>
                         )}
 
@@ -237,34 +261,38 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                                     href={`/property/${property.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="block w-full text-center border border-[#d49b37] text-[#d49b37] py-2 rounded-lg font-medium text-[13px] hover:bg-[#d49b37] hover:text-white transition"
+                                    className="flex items-center justify-center gap-2 w-full text-center border border-[#d49b37] text-[#d49b37] py-2 rounded-lg font-medium text-[13px] hover:bg-[#d49b37] hover:text-white transition"
                                 >
-                                    👁️ Lihat di Katalog
+                                    <Eye className="w-4 h-4" /> Lihat di Katalog
                                 </a>
                                 {bisaEdit ? (
                                     <button
                                         onClick={() => onAction?.('edit', property.id)}
-                                        className="w-full bg-blue-500 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-blue-600 transition"
+                                        className="flex items-center justify-center gap-2 w-full bg-[#c08a2c] text-white py-2 rounded-lg text-[13px] font-medium hover:bg-[#a37222] transition"
                                     >
-                                        ✏️ Edit (sisa {sisaEdit}x)
+                                        <Pencil className="w-4 h-4" /> Edit (sisa {sisaEdit}x)
                                     </button>
                                 ) : (
-                                    <span className="block text-center text-xs text-gray-400 italic">
-                                        Batas edit sudah habis
+                                    <span className="flex items-center justify-center gap-1.5 w-full text-center text-xs text-gray-400 italic py-1">
+                                        <Lock className="w-3.5 h-3.5" /> Batas edit sudah habis
                                     </span>
                                 )}
-                                {/* Tombol Upgrade ke Unggulan */}
+                                
+                                {/* Status Unggulan / Tombol Upgrade (Tema Emas Premium) */}
                                 {property.featured_status ? (
-                                    <div className="w-full bg-purple-50 border border-purple-200 text-purple-700 py-2 px-3 rounded-lg text-[13px] font-medium text-center">
-                                        {FEATURED_STATUS[property.featured_status] || 'Terdaftar unggulan'}
-                                        {property.featured_queue_position ? ` (#${property.featured_queue_position})` : ''}
+                                    <div className="flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 py-2 px-3 rounded-lg text-[13px] font-medium text-center">
+                                        <Sparkles className="w-4 h-4 text-[#d49b37] animate-pulse" />
+                                        <span>
+                                            {FEATURED_STATUS[property.featured_status] || 'Terdaftar unggulan'}
+                                            {property.featured_queue_position ? ` (#${property.featured_queue_position})` : ''}
+                                        </span>
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => onAction?.('featured', property.id)}
-                                        className="w-full bg-purple-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-purple-700 transition"
+                                        className="flex items-center justify-center gap-2 w-full bg-amber-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-amber-700 transition"
                                     >
-                                        Upgrade ke Unggulan
+                                        <Sparkles className="w-4 h-4" /> Upgrade ke Unggulan
                                     </button>
                                 )}
                             </div>
@@ -274,9 +302,9 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                         {property.status === 'rejected' && (
                             <button
                                 onClick={() => onAction?.('edit', property.id)}
-                                className="w-full bg-blue-500 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-blue-600 transition"
+                                className="flex items-center justify-center gap-2 w-full bg-[#c08a2c] text-white py-2 rounded-lg text-[13px] font-medium hover:bg-[#a37222] transition"
                             >
-                                ✏️ Edit & Ajukan Ulang
+                                <Pencil className="w-4 h-4" /> Edit & Ajukan Ulang
                             </button>
                         )}
                     </div>
@@ -286,7 +314,7 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                 {!isSeller && (
                     <Link
                         to={linkTo}
-                        className="block mt-4 text-center border border-[#d49b37] text-[#d49b37] py-2 rounded-lg font-medium text-[13px] hover:bg-[#d49b37] hover:text-white transition"
+                        className="flex items-center justify-center gap-1.5 block mt-4 text-center border border-[#d49b37] text-[#d49b37] py-2 rounded-lg font-medium text-[13px] hover:bg-[#d49b37] hover:text-white transition"
                     >
                         Detail
                     </Link>

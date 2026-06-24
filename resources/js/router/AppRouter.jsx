@@ -54,18 +54,25 @@ const AppRouter = () => (
         <Route path="/store/:sellerId" element={<StorePage />} />
 
         {/* Favorit (Customer & Seller) */}
+
         <Route path="/favorites" element={
             <ProtectedRoute allowedRoles={['customer', 'seller']}>
-                <Favorites />
+                <DashboardLayout pageTitle="Favorites" pageDescription="Favorites Anda">
+                    <Favorites />
+                </DashboardLayout>
             </ProtectedRoute>
         } />
 
         {/* Notifikasi (Semua Role Login) */}
-        <Route path="/notifications" element={
+     
+          <Route path="/Notifications" element={
             <ProtectedRoute allowedRoles={['customer', 'seller', 'admin', 'super_admin']}>
-                <Notifications />
+                <DashboardLayout pageTitle="Notifications" pageDescription="Notifications">
+                    <Notifications />
+                </DashboardLayout>
             </ProtectedRoute>
         } />
+
 
         {/* ========================================== */}
         {/* Customer */}
@@ -206,7 +213,13 @@ const AppRouter = () => (
         {/* ========================================== */}
         {/* Chat */}
         {/* ========================================== */}
-        <Route path="/chat" element={<ProtectedRoute allowedRoles={['customer', 'seller']}><ChatPage /></ProtectedRoute>} />
+        <Route path="/chat" element={
+            <ProtectedRoute allowedRoles={['customer', 'seller']}>
+                <DashboardLayout pageTitle="Pesan Saya" pageDescription="Komunikasi Anda dengan agen properti.">
+                    <ChatPage />
+                </DashboardLayout>
+            </ProtectedRoute>
+        } />
 
         {/* ========================================== */}
         {/* 404 Not Found */}
