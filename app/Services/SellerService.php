@@ -53,8 +53,8 @@ class SellerService
             if ($existing->foto_profil) {
                 Storage::disk('r2_public')->delete($existing->foto_profil);
             }
-            if ($existing->foto_toko) {
-                Storage::disk('r2_public')->delete($existing->foto_toko);
+            if ($existing->foto_agen) {
+                Storage::disk('r2_public')->delete($existing->foto_agen);
             }
         }
 
@@ -62,20 +62,20 @@ class SellerService
         $ktpPath = $request->file('ktp')->store('ktp', 'r2_private');
         $selfiePath = $request->file('selfie')->store('selfie', 'r2_private');
 
-        // Upload foto toko ke bucket publik (folder seller/store)
-        $fotoTokoPath = null;
-        if ($request->hasFile('foto_toko')) {
-            $fotoTokoPath = $request->file('foto_toko')->store('seller/store', 'r2_public');
+        // Upload foto agen ke bucket publik (folder seller/agen)
+        $fotoAgenPath = null;
+        if ($request->hasFile('foto_agen')) {
+            $fotoAgenPath = $request->file('foto_agen')->store('seller/agen', 'r2_public');
         }
 
         // Data yang bisa di‑fillable
         $fillableData = [
             'nama_lengkap'    => $user->name,   // otomatis dari nama user, bukan dari input
-            'nama_toko'       => $request->filled('nama_toko') ? strip_tags($request->nama_toko) : null,
+            'nama_agen'       => $request->filled('nama_agen') ? strip_tags($request->nama_agen) : null,
             'no_hp'           => strip_tags($request->no_hp),
             'alamat'          => strip_tags($request->alamat),
             'deskripsi'       => $request->filled('deskripsi') ? strip_tags($request->deskripsi) : null,
-            'foto_toko'       => $fotoTokoPath,
+            'foto_agen'       => $fotoAgenPath,
             'syarat_ketentuan' => true,
             'ktp_path'        => $ktpPath,
             'selfie_path'     => $selfiePath,
@@ -248,8 +248,8 @@ class SellerService
             if ($seller->foto_profil) {
                 Storage::disk('r2_public')->delete($seller->foto_profil);
             }
-            if ($seller->foto_toko) {
-                Storage::disk('r2_public')->delete($seller->foto_toko);
+            if ($seller->foto_agen) {
+                Storage::disk('r2_public')->delete($seller->foto_agen);
             }
 
             $seller->properties()->each(function ($property) {

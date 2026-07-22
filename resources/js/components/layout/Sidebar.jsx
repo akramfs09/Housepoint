@@ -265,16 +265,17 @@ const Sidebar = () => {
 
             {/* CARD 4: Utilities */}
             <div className="bg-white rounded-[20px] shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#f0ebe1] py-2">
-                <Link
-                    to="/settings"
-                    className="relative flex items-center justify-between px-5 py-3 mx-2 rounded-xl text-[#555] hover:text-[#D4AD5D] hover:bg-[#D4AD5D]/10 transition-all duration-300 group overflow-hidden"
-                >
-                    <div className="flex items-center gap-3 transform transition-transform duration-300 group-hover:translate-x-1.5">
-                        <Settings size={20} strokeWidth={2} className="group-hover:rotate-90 transition-transform duration-700 text-[#888] group-hover:text-[#D4AD5D]" />
-                        <span className="font-medium">Pengaturan</span>
-                    </div>
-                </Link>
-                
+                {currentRole !== 'admin' && (
+                    <Link
+                        to={currentRole === 'super_admin' ? '/admin/settings' : '/settings'}
+                        className="relative flex items-center justify-between px-5 py-3 mx-2 rounded-xl text-[#555] hover:text-[#D4AD5D] hover:bg-[#D4AD5D]/10 transition-all duration-300 group overflow-hidden"
+                    >
+                        <div className="flex items-center gap-3 transform transition-transform duration-300 group-hover:translate-x-1.5">
+                            <Settings size={20} strokeWidth={2} className="group-hover:rotate-90 transition-transform duration-700 text-[#888] group-hover:text-[#D4AD5D]" />
+                            <span className="font-medium">Pengaturan</span>
+                        </div>
+                    </Link>
+                )}
                 <button
                     onClick={handleLogout}
                     className="w-full relative flex items-center justify-between px-5 py-3 mx-2 mt-1 rounded-xl text-red-500 hover:bg-red-50 hover:text-red-600 transition-all duration-300 group overflow-hidden"

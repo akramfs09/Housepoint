@@ -1,19 +1,51 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebsiteContent } from '../../hooks/useWebsiteContent';
+import api from '../../services/api';
+
+const OTP_COOLDOWN_SECONDS = 60;
 
 const VerifyOTPPage = () => {
     const [otpDigits, setOtpDigits] = useState(Array(6).fill(''));
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isResending, setIsResending] = useState(false);
+    const [cooldown, setCooldown] = useState(OTP_COOLDOWN_SECONDS);
     const inputRefs = useRef([]);
     const { verifyOtp } = useAuth();
+    const { content } = useWebsiteContent();
+    const authLogo = content.branding?.auth_logo_url || content.branding?.header_logo_url || '/logo.png';
     const navigate = useNavigate();
     const location = useLocation();
 
     const email = location.state?.email || '';
     const purpose = location.state?.purpose || 'register';
     const otp = otpDigits.join('');
+    const canResend = cooldown <= 0 && !isResending && Boolean(email);
+    const cooldownProgress = Math.max(0, Math.min(100, ((OTP_COOLDOWN_SECONDS - cooldown) / OTP_COOLDOWN_SECONDS) * 100));
+
+    useEffect(() => {
+        if (cooldown <= 0) return undefined;
+
+        const timer = setInterval(() => {
+            setCooldown((current) => Math.max(0, current - 1));
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [cooldown]);
+
+    useEffect(() => {
+        if (!email) {
+            navigate(purpose === 'reset_password' ? '/forgot-password' : '/register', { replace: true });
+        }
+    }, [email, navigate, purpose]);
+
+    const formatCooldown = (seconds) => {
+        const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const remainingSeconds = (seconds % 60).toString().padStart(2, '0');
+        return `${minutes}:${remainingSeconds}`;
+    };
 
     const handleOtpChange = (index, value) => {
         const sanitizedValue = value.replace(/\D/g, '');
@@ -77,6 +109,27 @@ const VerifyOTPPage = () => {
         }
     };
 
+    const handleResendOtp = async () => {
+        if (!canResend) return;
+
+        setError('');
+        setIsResending(true);
+        try {
+            await api.post('/auth/resend-otp', { email, purpose });
+            setOtpDigits(Array(6).fill(''));
+            setCooldown(OTP_COOLDOWN_SECONDS);
+            inputRefs.current[0]?.focus();
+        } catch (err) {
+            const message = err.response?.data?.message || 'Gagal mengirim ulang OTP.';
+            setError(message);
+            if (message.toLowerCase().includes('60 detik')) {
+                setCooldown(OTP_COOLDOWN_SECONDS);
+            }
+        } finally {
+            setIsResending(false);
+        }
+    };
+
     const pageDescription = purpose === 'reset_password'
         ? 'Masukkan kode OTP untuk melanjutkan reset password'
         : 'Masukkan kode OTP yang telah dikirim ke email Anda';
@@ -96,19 +149,12 @@ const VerifyOTPPage = () => {
 
             {/* 2. LOGO UTAMA */}
             <div className="w-full h-[95px] px-6 lg:px-[100px] flex items-center z-30 relative">
-                <div className="flex items-center gap-2.5 transition-transform duration-300 hover:scale-105 cursor-pointer">
-                    <div className="w-9 h-9 border-2 border-[#D4A44C] rounded-full flex items-center justify-center bg-black/10 backdrop-blur-sm lg:bg-transparent">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#D4A44C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M2 17L12 22L22 17" stroke="#D4A44C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M2 12L12 17L22 12" stroke="#D4A44C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                    </div>
-                    <div className="flex flex-col leading-none">
-                        <span className="font-bold tracking-widest text-white text-sm drop-shadow-sm">HOUSE POINT</span>
-                        <span className="text-[9px] tracking-[0.22em] text-amber-200/90 font-semibold">CATALOG</span>
-                    </div>
-                </div>
+                <img
+                    src={authLogo}
+                    alt="HousePoint"
+                    className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 cursor-pointer"
+                    onClick={() => navigate('/')}
+                />
             </div>
 
             {/* 3. AREA UTAMA KONTEN GRID (Menggunakan skema col-span-12 persis seperti Register) */}
@@ -191,19 +237,29 @@ const VerifyOTPPage = () => {
 
                         {/* Informasi Kirim Ulang */}
                         <div className="mt-6 text-center border-t border-gray-100 pt-4">
-                            <span className="text-gray-400 text-xs font-medium">Kirim ulang dalam:</span>
+                            <span className="text-gray-400 text-xs font-medium">
+                                {cooldown > 0 ? 'Kirim ulang dalam:' : 'Kode belum diterima?'}
+                            </span>
 
                             <div className="mt-1.5 flex justify-center items-center gap-2">
                                 <div className="h-1.5 w-20 bg-amber-100 rounded-full overflow-hidden">
-                                    <div className="h-full w-1/3 bg-[#D4A44C] rounded-full animate-pulse"></div>
+                                    <div
+                                        className="h-full bg-[#D4A44C] rounded-full transition-all duration-500"
+                                        style={{ width: `${cooldownProgress}%` }}
+                                    ></div>
                                 </div>
-                                <span className="text-xs text-gray-600 font-bold tracking-wider">00:30</span>
+                                <span className="text-xs text-gray-600 font-bold tracking-wider">{formatCooldown(cooldown)}</span>
                             </div>
 
                             <p className="mt-3.5 text-xs text-gray-400 font-medium">Tidak menerima kode?</p>
 
-                            <button className="mt-0.5 text-[#D4A44C] hover:text-[#c1923d] text-sm font-bold transition-colors hover:underline focus:outline-none">
-                                Kirim Ulang Sekarang
+                            <button
+                                type="button"
+                                onClick={handleResendOtp}
+                                disabled={!canResend}
+                                className="mt-0.5 text-[#D4A44C] hover:text-[#c1923d] text-sm font-bold transition-colors hover:underline focus:outline-none disabled:text-gray-300 disabled:no-underline disabled:cursor-not-allowed"
+                            >
+                                {isResending ? 'Mengirim ulang...' : 'Kirim Ulang Sekarang'}
                             </button>
                         </div>
 

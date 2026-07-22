@@ -20,6 +20,50 @@ class CustomerProfileController extends Controller
             return $this->error('Profil customer tidak ditemukan.', 404);
         }
 
+        // Ambil data favorit riil
+        $favs = \DB::table('favorites')
+            ->where('user_id', $user->id)
+            ->join('properties', 'favorites.property_id', '=', 'properties.id')
+            ->select('properties.title', 'properties.city', 'properties.province', 'favorites.created_at')
+            ->latest('favorites.created_at')
+            ->take(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'id' => 'fav-' . $item->created_at,
+                    'type' => 'favorite',
+                    'title' => 'Menyimpan Favorit: ' . $item->title,
+                    'time' => \Carbon\Carbon::parse($item->created_at)->diffForHumans(),
+                    'location' => implode(', ', array_filter([$item->city, $item->province])),
+                    'timestamp' => $item->created_at,
+                ];
+            })
+            ->toArray();
+
+        // Ambil data view riil
+        $views = \App\Models\PropertyView::where('user_id', $user->id)
+            ->with('property')
+            ->latest('id')
+            ->take(5)
+            ->get()
+            ->filter(fn($v) => !is_null($v->property))
+            ->map(function($v) {
+                return [
+                    'id' => 'view-' . $v->id,
+                    'type' => 'view',
+                    'title' => 'Melihat ' . $v->property->title,
+                    'time' => \Carbon\Carbon::parse($v->created_at)->diffForHumans(),
+                    'location' => implode(', ', array_filter([$v->property->city, $v->property->province])),
+                    'timestamp' => $v->created_at,
+                ];
+            })
+            ->toArray();
+
+        // Gabungkan dan urutkan berdasarkan timestamp terbaru
+        $activitiesList = array_merge($favs, $views);
+        usort($activitiesList, fn($a, $b) => strcmp($b['timestamp'], $a['timestamp']));
+        $activitiesList = array_slice($activitiesList, 0, 5);
+
         return $this->success([
             'name'          => $user->name,
             'email'         => $user->email,
@@ -30,6 +74,7 @@ class CustomerProfileController extends Controller
             'jenis_kelamin' => $profile->jenis_kelamin,
             'pekerjaan'     => $profile->pekerjaan,
             'foto_profil'   => $profile->foto_profil_url,
+            'activities'    => $activitiesList,
         ]);
     }
 

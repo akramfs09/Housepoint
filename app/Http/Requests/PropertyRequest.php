@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\City;
 use Illuminate\Foundation\Http\FormRequest;
 
 class PropertyRequest extends FormRequest
@@ -27,7 +28,10 @@ class PropertyRequest extends FormRequest
             // Lokasi
             'province'       => 'required|string|max:100',
             'city'           => 'required|string|max:100',
+            'province_id'    => 'nullable|integer|exists:provinces,id',
+            'city_id'        => 'nullable|integer|exists:cities,id',
             'address'        => 'required|string|max:500',
+            'gmaps_url'      => 'nullable|url|max:1000',
 
             // Detail Bangunan
             'bedrooms'       => 'nullable|integer|min:0',
@@ -58,6 +62,27 @@ class PropertyRequest extends FormRequest
             'tahun_dibangun.max'        => 'Tahun dibangun tidak boleh melebihi tahun sekarang.',
             'video_file.required_if'    => 'File video wajib diunggah jika memilih metode upload.',
             'youtube_url.required_if'   => 'URL YouTube wajib diisi jika memilih metode link.',
+            'gmaps_url.url'              => 'Link Google Maps harus berupa URL yang valid.',
+            'city_id.exists'             => 'Kota yang dipilih tidak valid.',
+            'province_id.exists'         => 'Provinsi yang dipilih tidak valid.',
+            'city_id.same'               => 'Kota harus sesuai dengan provinsi yang dipilih.',
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            $provinceId = $this->input('province_id');
+            $cityId = $this->input('city_id');
+
+            if (! $provinceId || ! $cityId) {
+                return;
+            }
+
+            $city = City::find($cityId);
+            if (! $city || (int) $city->province_id !== (int) $provinceId) {
+                $validator->errors()->add('city_id', 'Kota harus sesuai dengan provinsi yang dipilih.');
+            }
+        });
     }
 }

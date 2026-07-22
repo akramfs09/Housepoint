@@ -19,6 +19,7 @@ use App\Models\SellerProfile;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use App\Services\FeaturedListingService;
 use App\Services\PaymentService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -79,6 +80,13 @@ class SellerController extends Controller
 
         $property = $this->propertyService->create($request);
         return $this->success(new PropertyResource($property->load('images')), 'Properti berhasil dibuat.', 201);
+    }
+
+    public function show(Property $property)
+    {
+        $this->authorize('update', $property);
+
+        return $this->success(new PropertyResource($property->load(['images', 'sellerProfile.user', 'currentFeaturedListing'])));
     }
 
     public function update(PropertyRequest $request, Property $property)
@@ -276,7 +284,7 @@ class SellerController extends Controller
         $this->propertyService->publish($property);
 
         // Kirim notifikasi ke seller
-        $seller->user->notify(new PaymentSuccessNotification($property));
+        $this->notifyPaymentSuccess($seller, $property, 'property_upload');
 
         return $this->success(null, 'Properti berhasil dipublikasikan.');
     }
@@ -326,6 +334,31 @@ class SellerController extends Controller
 
         if ($property->status !== 'published') {
             return $this->error('Hanya properti aktif yang bisa diupgrade.', 400);
+        }
+
+        FeaturedListing::where('property_id', $property->id)
+            ->where('status', 'active')
+            ->where('expires_at', '<=', now())
+            ->update(['status' => 'completed']);
+
+        FeaturedListing::where('property_id', $property->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->where('created_at', '<', now()->subMinutes(15))
+            ->update(['status' => 'cancelled']);
+
+        $pendingFeatured = FeaturedListing::where('property_id', $property->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($pendingFeatured) {
+            $pendingFeatured = $paymentService->syncFeaturedListingStatus($pendingFeatured);
+
+            if ($pendingFeatured->status === 'pending') {
+                $pendingFeatured->update(['status' => 'cancelled']);
+            }
         }
 
         // Cek apakah sudah ada antrian aktif atau pending
@@ -378,18 +411,54 @@ class SellerController extends Controller
             if ($latest && $latest->status === 'pending') {
                 $latest = $paymentService->syncFeaturedListingStatus($latest);
                 if ($latest && $latest->status === 'paid') {
+                    $this->notifyPaymentSuccess($seller, $property, 'featured_listing');
+                    app(FeaturedListingService::class)->syncSlots();
+
                     return $this->success(null, 'Pembayaran terverifikasi, properti masuk antrian.');
                 }
             }
+
+            if ($latest && $latest->status === 'paid') {
+                $this->notifyPaymentSuccess($seller, $property, 'featured_listing');
+                app(FeaturedListingService::class)->syncSlots();
+
+                return $this->success(null, 'Pembayaran berhasil, properti masuk antrian unggulan.');
+            }
+
             return $this->error('Transaksi tidak ditemukan atau sudah diproses.', 404);
         }
 
         $featured = $paymentService->syncFeaturedListingStatus($featured);
         if ($featured->status === 'paid') {
+            $this->notifyPaymentSuccess($seller, $property, 'featured_listing');
+            app(FeaturedListingService::class)->syncSlots();
+
             return $this->success(null, 'Pembayaran berhasil, properti masuk antrian unggulan.');
         }
 
         return $this->success(null, 'Pembayaran sedang diverifikasi. Properti akan masuk antrian setelah konfirmasi.', 202);
+    }
+
+    public function cancelFeaturedPayment(Property $property, PaymentService $paymentService)
+    {
+        $user = request()->user();
+        $seller = $user->sellerProfile;
+
+        if ($property->seller_id !== $seller?->id) {
+            return $this->error('Properti tidak ditemukan.', 404);
+        }
+
+        $featured = FeaturedListing::where('property_id', $property->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        if ($featured) {
+            $paymentService->cancelFeaturedListing($featured);
+        }
+
+        return $this->success(null, 'Pembayaran unggulan dibatalkan.');
     }
 
     public function dashboard(Request $request)
@@ -491,5 +560,19 @@ class SellerController extends Controller
             'favorites_chart'=> $favoritesWeekly,
             'properties'     => $properties,
         ]);
+    }
+
+    private function notifyPaymentSuccess(SellerProfile $seller, Property $property, string $paymentType): void
+    {
+        $alreadyNotified = $seller->user->notifications()
+            ->where('type', PaymentSuccessNotification::class)
+            ->where('data->type', 'payment_success')
+            ->where('data->payment_type', $paymentType)
+            ->where('data->property_id', $property->id)
+            ->exists();
+
+        if (!$alreadyNotified) {
+            $seller->user->notify(new PaymentSuccessNotification($property, $paymentType));
+        }
     }
 }

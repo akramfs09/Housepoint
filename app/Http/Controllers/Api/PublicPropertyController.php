@@ -60,6 +60,14 @@ class PublicPropertyController extends Controller
             ->get()
             ->sortBy(fn($p) => array_search($p->id, $favoritedIds->toArray()));
 
+        if ($request->boolean('sections_only')) {
+            return response()->json([
+                'success'   => true,
+                'popular'   => PropertyResource::collection($popular),
+                'favorited' => PropertyResource::collection($favorited),
+            ]);
+        }
+
         // ========== 3. SEMUA (filter + sort + pagination) ==========
         $query = Property::published()->with('images');
         if ($user) {
@@ -69,8 +77,14 @@ class PublicPropertyController extends Controller
         if ($search = $request->search) {
             $query->where('title', 'like', '%' . $search . '%');
         }
+        if ($provinceId = $request->province_id) {
+            $query->where('province_id', $provinceId);
+        }
         if ($type = $request->type) {
             $query->where('type', $type);
+        }
+        if ($cityId = $request->city_id) {
+            $query->where('city_id', $cityId);
         }
         if ($city = $request->city) {
             $query->where('city', 'like', '%' . $city . '%');

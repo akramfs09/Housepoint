@@ -14,7 +14,7 @@ class UserService
         // Konversi has_pending_appeal ke boolean (terima string "true"/"false" atau boolean)
         $hasPendingAppeal = filter_var($filters['has_pending_appeal'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $query = User::with(['role', 'sellerProfile']);
+        $query = User::with(['role', 'sellerProfile.appeals' => fn($q) => $q->where('status', 'pending')->latest()]);
 
         if ($hasPendingAppeal) {
             // Hanya user yang punya banding pending

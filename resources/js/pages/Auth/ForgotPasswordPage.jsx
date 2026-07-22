@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useWebsiteContent } from '../../hooks/useWebsiteContent';
 import api from '../../services/api';
 
 const ForgotPasswordPage = () => {
@@ -7,7 +8,9 @@ const ForgotPasswordPage = () => {
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const { content } = useWebsiteContent();
     const navigate = useNavigate();
+    const authLogo = content.branding?.auth_logo_url || content.branding?.header_logo_url || '/logo.png';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -46,7 +49,7 @@ const ForgotPasswordPage = () => {
             {/* 2. LOGO UTAMA */}
             <div className="w-full h-[95px] px-6 lg:px-[100px] flex items-center z-30 relative">
                 <img
-                    src="/logo.png"
+                    src={authLogo}
                     alt="HousePoint"
                     className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 cursor-pointer"
                 />

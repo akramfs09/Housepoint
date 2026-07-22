@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import {
+    cancelFeaturedPayment,
     fetchFeaturedQueueEta,
     initiateFeaturedPayment,
     publishFeaturedProperty,
 } from '../../services/api';
+import { loadMidtransSnap } from '../../utils/loadMidtransSnap';
 
 const FeaturedModal = ({ property, onClose }) => {
     const [eta, setEta] = useState(null);
     const [loading, setLoading] = useState(false);
+    const paymentStateRef = useRef('idle');
 
     const formatCurrency = (value) => {
         const amount = Number(value || 0);
@@ -29,24 +32,28 @@ const FeaturedModal = ({ property, onClose }) => {
     }, []);
 
     const handlePay = async () => {
-        if (!window.snap) {
-            toast.error('Midtrans Snap belum siap. Muat ulang halaman lalu coba lagi.');
-            return;
-        }
-
         setLoading(true);
+        paymentStateRef.current = 'processing';
 
         try {
             const { data } = await initiateFeaturedPayment(property.id);
             const snapToken = data.data?.snap_token;
 
             if (!snapToken) {
+                try {
+                    await cancelFeaturedPayment(property.id);
+                } catch {
+                    // Abaikan, backend akan menutup transaksi pending yang tidak valid.
+                }
+                paymentStateRef.current = 'error';
                 toast.error('Snap Token tidak tersedia.');
                 return;
             }
 
-            window.snap.pay(snapToken, {
+            const snap = await loadMidtransSnap();
+            snap.pay(snapToken, {
                 onSuccess: async () => {
+                    paymentStateRef.current = 'success';
                     try {
                         await publishFeaturedProperty(property.id);
                         toast.success('Properti masuk antrian unggulan.');
@@ -55,17 +62,45 @@ const FeaturedModal = ({ property, onClose }) => {
                         toast.error(error.response?.data?.message || 'Pembayaran sukses, tapi antrian belum bisa diperbarui.');
                     }
                 },
-                onPending: () => {
-                    toast.success('Pembayaran tertunda. Selesaikan pembayaran agar properti masuk antrian.');
+                onPending: async () => {
+                    paymentStateRef.current = 'pending';
+                    toast('Pembayaran masih menunggu konfirmasi.');
+                    onClose(true);
                 },
-                onError: () => {
+                onError: async () => {
+                    paymentStateRef.current = 'error';
+                    try {
+                        await cancelFeaturedPayment(property.id);
+                    } catch {
+                        // Abaikan, server akan membersihkan transaksi pending yang kedaluwarsa.
+                    }
                     toast.error('Pembayaran gagal.');
+                    onClose(true);
                 },
-                onClose: () => {
+                onClose: async () => {
+                    const shouldCancel = paymentStateRef.current === 'idle' || paymentStateRef.current === 'processing';
+
+                    if (shouldCancel) {
+                        try {
+                            await cancelFeaturedPayment(property.id);
+                        } catch {
+                            // Abaikan, backend tetap bisa menyinkronkan status berikutnya.
+                        }
+                    }
+
+                    onClose(true);
                     toast('Popup pembayaran ditutup.');
                 },
             });
         } catch (error) {
+            if (paymentStateRef.current === 'processing') {
+                try {
+                    await cancelFeaturedPayment(property.id);
+                } catch {
+                    // Abaikan, status tetap bisa dibersihkan dari sisi server.
+                }
+            }
+            paymentStateRef.current = 'error';
             toast.error(error.response?.data?.message || 'Gagal memproses pembayaran unggulan.');
         } finally {
             setLoading(false);

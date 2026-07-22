@@ -15,10 +15,10 @@ class SellerProfile extends Model
         'ktp_path',
         'selfie_path',
         'nama_lengkap',
-        'nama_toko',  
+        'nama_agen',
         'no_hp',
         'alamat',
-        'foto_toko',           
+        'foto_agen',
         'deskripsi',
         'syarat_ketentuan',
         'no_hp_verified',
@@ -40,7 +40,7 @@ class SellerProfile extends Model
 
     public function getFotoTokoUrlAttribute()
     {
-        return PublicStorageUrl::make($this->foto_toko);
+        return PublicStorageUrl::make($this->foto_agen);
     }
 
     public function getFotoProfilUrlAttribute()
@@ -66,5 +66,30 @@ class SellerProfile extends Model
     public function appeals()
     {
         return $this->hasMany(SellerAppeal::class);
+    }
+
+    public function getNamaTokoAttribute()
+    {
+        return $this->attributes['nama_agen'] ?? null;
+    }
+
+    public function setNamaTokoAttribute($value): void
+    {
+        $this->attributes['nama_agen'] = $value;
+    }
+
+    public function getFotoTokoAttribute()
+    {
+        return $this->attributes['foto_agen'] ?? null;
+    }
+
+    public function setFotoTokoAttribute($value): void
+    {
+        $this->attributes['foto_agen'] = $value;
+    }
+
+    public function getFotoAgenUrlAttribute()
+    {
+        return PublicStorageUrl::make($this->foto_agen);
     }
 }

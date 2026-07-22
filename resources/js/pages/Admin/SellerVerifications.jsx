@@ -9,13 +9,25 @@ const SellerVerifications = () => {
     const [loading, setLoading] = useState(true);
     const [selectedSellerId, setSelectedSellerId] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [filterStatus, setFilterStatus] = useState('Semua'); // State untuk filter tab
+    
+    // Status filter key mappings:
+    // 'all' -> Semua, 'pending' -> Pending, 'approved' -> Disetujui, 'rejected' -> Ditolak
+    const [filterStatus, setFilterStatus] = useState('all');
+
+    const statuses = [
+        { key: 'all', label: 'Semua' },
+        { key: 'pending', label: 'Pending' },
+        { key: 'approved', label: 'Disetujui' },
+        { key: 'rejected', label: 'Ditolak' }
+    ];
 
     const fetchSellers = async () => {
         setLoading(true);
         try {
-            // Jika backend support filter status, tambahkan status ke params
             const params = { page, per_page: 20 };
+            if (filterStatus !== 'all') {
+                params.status = filterStatus;
+            }
             const res = await api.get('/admin/seller-verifications', { params });
             setSellers(res.data.data);
             setMeta(res.data.meta);
@@ -28,7 +40,7 @@ const SellerVerifications = () => {
 
     useEffect(() => {
         fetchSellers();
-    }, [page]); // Tambahkan filterStatus di dependency jika API support filter
+    }, [page, filterStatus]);
 
     const handleOpenOverview = (sellerId) => {
         setSelectedSellerId(sellerId);
@@ -49,26 +61,29 @@ const SellerVerifications = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-3xl font-extrabold text-[#2c2c2c] tracking-tight">
-                        Verifikasi Agen
+                        
                     </h1>
                     <p className="text-sm text-[#8b8478] mt-1">
-                        Kelola dan tinjau pengajuan kemitraan agen baru di platform HousePoint.
+                        
                     </p>
                 </div>
 
                 {/* Filter Tabs */}
                 <div className="flex bg-[#fdfaf5] border border-[#e5d8c0] rounded-xl overflow-hidden p-1 shadow-sm">
-                    {['Semua', 'Pending', 'Ditolak'].map((status) => (
+                    {statuses.map((status) => (
                         <button
-                            key={status}
-                            onClick={() => setFilterStatus(status)}
+                            key={status.key}
+                            onClick={() => {
+                                setPage(1);
+                                setFilterStatus(status.key);
+                            }}
                             className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-300 ${
-                                filterStatus === status 
-                                    ? 'bg-[#D4AD5D] text-white shadow-md' 
+                                filterStatus === status.key
+                                    ? 'bg-[#D4AD5D] text-white shadow-md'
                                     : 'text-[#8b8478] hover:bg-[#faf7f0] hover:text-[#2c2c2c]'
                             }`}
                         >
-                            {status}
+                            {status.label}
                         </button>
                     ))}
                 </div>
@@ -129,12 +144,22 @@ const SellerVerifications = () => {
                                     </div>
 
                                     {/* Badge Status - shrink-0 agar ukurannya tetap */}
-                                    <span className="bg-[#fdf4db] text-[#d99f2a] px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider shrink-0">
-                                        PENDING
+                                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider shrink-0 ${
+                                        seller.status === 'approved'
+                                            ? 'bg-green-100 text-green-700'
+                                            : seller.status === 'rejected'
+                                                ? 'bg-red-100 text-red-700'
+                                                : 'bg-[#fdf4db] text-[#d99f2a]'
+                                    }`}>
+                                        {seller.status === 'approved'
+                                            ? 'APPROVED'
+                                            : seller.status === 'rejected'
+                                                ? 'REJECTED'
+                                                : 'PENDING'}
                                     </span>
                                 </div>
 
-                                {/* Kotak Meta Info (Tanggal & Agensi) */}
+                                {/* Kotak Meta Info (Tanggal & Agen) */}
                                 <div className="grid grid-cols-2 gap-3 mt-5">
                                     <div className="bg-[#faf7f0] p-3 rounded-xl border border-[#f0ebe1]">
                                         <p className="text-[9px] text-[#a1998a] font-bold tracking-widest mb-1">DIAJUKAN PADA</p>
@@ -143,9 +168,9 @@ const SellerVerifications = () => {
                                         </p>
                                     </div>
                                     <div className="bg-[#faf7f0] p-3 rounded-xl border border-[#f0ebe1]">
-                                        <p className="text-[9px] text-[#a1998a] font-bold tracking-widest mb-1">AGENSI</p>
+                                        <p className="text-[9px] text-[#a1998a] font-bold tracking-widest mb-1">AGEN</p>
                                         <p className="text-[13px] font-semibold text-[#2c2c2c] truncate">
-                                            {seller.nama_agensi || 'Independent'}
+                                            {seller.nama_agen || 'Independent'}
                                         </p>
                                     </div>
                                 </div>

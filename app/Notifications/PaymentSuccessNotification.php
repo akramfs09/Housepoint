@@ -11,7 +11,10 @@ class PaymentSuccessNotification extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
-    public function __construct(public Property $property) {}
+    public function __construct(
+        public Property $property,
+        public string $paymentType = 'property_upload'
+    ) {}
 
     public function via($notifiable): array
     {
@@ -22,6 +25,7 @@ class PaymentSuccessNotification extends Notification implements ShouldBroadcast
     {
         return [
             'type' => 'payment_success',
+            'payment_type' => $this->paymentType,
             'property_id' => $this->property->id,
             'title' => $this->property->title,
         ];

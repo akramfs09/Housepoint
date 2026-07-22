@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SellerResource;
+use App\Http\Resources\PaymentHistoryResource;
 use App\Http\Resources\PropertyResource;
 use App\Http\Traits\ApiResponse;
 use App\Models\Property;
@@ -14,11 +15,15 @@ use Illuminate\Http\Request;
 use App\Services\UserService;
 use App\Http\Resources\UserResource;
 use App\Models\SellerAppeal;
+use App\Models\PaymentHistory;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\AdminActionLog;
 use App\Notifications\SellerVerificationNotification;
 use App\Notifications\PropertyModerationNotification;
 use App\Notifications\AppealNotification;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -41,12 +46,15 @@ class AdminController extends Controller
     // ============================================
     // Seller Verifications
     // ============================================
-    public function sellerVerifications()
+    public function sellerVerifications(Request $request)
     {
-        $sellers = SellerProfile::with('user')
-            ->where('status', 'pending')
-            ->latest()
-            ->paginate(20);
+        $query = SellerProfile::with('user')->latest();
+
+        if ($request->filled('status') && $request->status !== 'Semua') {
+            $query->where('status', $request->status);
+        }
+
+        $sellers = $query->paginate(min((int) $request->get('per_page', 20), 50));
 
         return SellerResource::collection($sellers);
     }
@@ -74,7 +82,70 @@ class AdminController extends Controller
 
     public function showSeller(SellerProfile $seller)
     {
-        return $this->success(new SellerResource($seller));
+        return $this->success(new SellerResource($seller->loadMissing('user')));
+    }
+
+    public function confirmKtpAccess(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            return $this->error('Password saat ini salah.', 422);
+        }
+
+        $expiresAt = now()->addMinutes(10);
+        Cache::put($this->ktpAccessCacheKey($user->id), true, $expiresAt);
+
+        AdminActionLog::create([
+            'actor_id' => $user->id,
+            'action' => 'verify_superadmin_ktp_access',
+            'target_type' => User::class,
+            'target_id' => $user->id,
+            'metadata' => json_encode([
+                'verified_at' => now()->toDateTimeString(),
+                'expires_at' => $expiresAt->toDateTimeString(),
+            ]),
+        ]);
+
+        return $this->success([
+            'verified_until' => $expiresAt->toDateTimeString(),
+        ], 'Verifikasi berhasil.');
+    }
+
+    public function sellerKtpReviews(Request $request)
+    {
+        $query = SellerProfile::with('user')->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($builder) use ($search) {
+                $builder->where('nama_lengkap', 'like', '%' . $search . '%')
+                    ->orWhere('nama_agen', 'like', '%' . $search . '%')
+                    ->orWhere('no_hp', 'like', '%' . $search . '%')
+                    ->orWhere('alamat', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $builder->orWhere('id', (int) $search);
+                    $builder->orWhere('user_id', (int) $search);
+                }
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $perPage = min((int) $request->get('per_page', 20), 50);
+
+        return SellerResource::collection($query->paginate($perPage));
     }
 
     // ============================================
@@ -88,6 +159,40 @@ class AdminController extends Controller
             ->paginate(20);
 
         return PropertyResource::collection($properties);
+    }
+
+    public function allProperties(Request $request)
+    {
+        $query = Property::with(['images', 'sellerProfile.user'])->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', '%' . $search . '%')
+                    ->orWhere('city', 'like', '%' . $search . '%')
+                    ->orWhere('province', 'like', '%' . $search . '%')
+                    ->orWhereHas('sellerProfile.user', function ($sellerQuery) use ($search) {
+                        $sellerQuery->where('name', 'like', '%' . $search . '%')
+                            ->orWhere('email', 'like', '%' . $search . '%');
+                    });
+
+                if (is_numeric($search)) {
+                    $q->orWhere('id', (int) $search);
+                }
+            });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $perPage = min((int) $request->get('per_page', 10), 50);
+
+        return PropertyResource::collection($query->paginate($perPage));
     }
 
     public function approveProperty(Property $property)
@@ -121,6 +226,80 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             return $this->error($e->getMessage(), 400);
         }
+    }
+
+    // ============================================
+    // Payment History
+    // ============================================
+    public function paymentHistories(Request $request)
+    {
+        $query = PaymentHistory::with(['property.images', 'user.role'])->latest();
+
+        if ($request->filled('payment_type')) {
+            $query->where('payment_type', $request->payment_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('order_id', 'like', '%' . $search . '%')
+                    ->orWhere('payment_label', 'like', '%' . $search . '%')
+                    ->orWhere('property_title', 'like', '%' . $search . '%')
+                    ->orWhere('customer_name', 'like', '%' . $search . '%')
+                    ->orWhere('customer_email', 'like', '%' . $search . '%')
+                    ->orWhere('seller_name', 'like', '%' . $search . '%')
+                    ->orWhere('payment_method', 'like', '%' . $search . '%');
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $perPage = min((int) $request->get('per_page', 20), 50);
+        $histories = $query->paginate($perPage);
+
+        return PaymentHistoryResource::collection($histories);
+    }
+
+    public function showPaymentHistory(PaymentHistory $paymentHistory)
+    {
+        $paymentHistory->load(['property.images', 'user.role']);
+
+        return $this->success(new PaymentHistoryResource($paymentHistory));
+    }
+
+    // ============================================
+    // User Statistics
+    // ============================================
+    public function userStats()
+    {
+        $customerRole = Role::where('nama_role', 'customer')->value('id');
+        $sellerRole = Role::where('nama_role', 'seller')->value('id');
+
+        $totalUsers = User::whereHas('role', fn($q) => $q->whereIn('nama_role', ['customer', 'seller']))
+            ->count();
+
+        $totalBuyers = User::where('role_id', $customerRole)->count();
+        $totalSellers = User::where('role_id', $sellerRole)->count();
+        $totalSuspended = User::whereHas('role', fn($q) => $q->whereIn('nama_role', ['customer', 'seller']))
+            ->where('is_banned', true)
+            ->count();
+
+        return $this->success([
+            'total_users' => $totalUsers,
+            'total_buyers' => $totalBuyers,
+            'total_sellers' => $totalSellers,
+            'total_suspended' => $totalSuspended,
+        ]);
     }
 
     // ============================================
@@ -193,6 +372,8 @@ class AdminController extends Controller
         return $this->success(null, 'Banding ditolak.');
     }
 
+
+
     // ============================================
     // Activity Logs
     // ============================================
@@ -216,7 +397,7 @@ class AdminController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        // Filter multi‑aksi
+        // Filter multi-aksi
         if ($request->filled('action')) {
             $actions = $request->input('action');
             if (is_string($actions)) {
@@ -230,40 +411,48 @@ class AdminController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('action', 'like', '%' . $search . '%')
-                ->orWhere('metadata', 'like', '%' . $search . '%');
+                  ->orWhere('metadata', 'like', '%' . $search . '%');
             });
         }
 
-        $logs = $query->paginate($request->per_page ?? 20);
+        $logs = $query->paginate($request->per_page ?? 10);
 
-        // ✨ Tambahan: set name & email pada target agar frontend bisa langsung baca
+        // Set name & email pada target agar frontend bisa langsung baca log.target.name
         $logs->getCollection()->transform(function ($log) {
             $target = $log->target;
+
             if ($target instanceof \App\Models\SellerProfile) {
-                // Pastikan relasi user termuat (jika belum, eager load)
                 if (!$target->relationLoaded('user')) {
                     $target->load('user');
                 }
-                $user = $target->user;
-                if ($user) {
-                    $target->setAttribute('name', $user->name);
-                    $target->setAttribute('email', $user->email);
+                $u = $target->user;
+                if ($u) {
+                    $target->setAttribute('name', $u->name);
+                    $target->setAttribute('email', $u->email);
                 }
             } elseif ($target instanceof \App\Models\SellerAppeal) {
                 if (!$target->relationLoaded('sellerProfile')) {
                     $target->load('sellerProfile.user');
                 }
-                $user = $target->sellerProfile->user ?? null;
-                if ($user) {
-                    $target->setAttribute('name', $user->name);
-                    $target->setAttribute('email', $user->email);
+                $u = $target->sellerProfile->user ?? null;
+                if ($u) {
+                    $target->setAttribute('name', $u->name);
+                    $target->setAttribute('email', $u->email);
                 }
+            } elseif ($target instanceof \App\Models\Property) {
+                // Tampilkan judul properti agar frontend bisa baca log.target.name
+                $target->setAttribute('name', $target->judul ?? $target->title ?? "Properti #{$target->id}");
             }
-            // Untuk tipe User, name & email sudah ada
+            // Untuk tipe User, name & email sudah tersedia langsung dari model
 
             return $log;
         });
 
         return response()->json($logs);
+    }
+
+    private function ktpAccessCacheKey(int $userId): string
+    {
+        return "super_admin_ktp_access:{$userId}";
     }
 }

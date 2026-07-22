@@ -36,6 +36,10 @@ class PropertyResource extends JsonResource
             'type'           => $this->type,
             'status_jual'    => $this->status_jual,
             'address'        => $this->address,
+            'province_id'    => $this->province_id,
+            'city_id'        => $this->city_id,
+            'gmaps_url'      => $this->gmaps_url,
+            'gmaps_query'    => $this->gmaps_query,
             'city'           => $this->city,
             'province'       => $this->province,
             'bedrooms'       => $this->bedrooms,
@@ -61,13 +65,16 @@ class PropertyResource extends JsonResource
             'featured_queue_position' => $featuredListing && $featuredListing->status === 'paid'
                 ? $this->featuredQueuePosition($featuredListing)
                 : null,
-            'seller'         => new UserResource($this->whenLoaded('sellerProfile.user')),
+            'seller'         => $this->when(
+                $this->relationLoaded('sellerProfile') && $this->sellerProfile?->relationLoaded('user'),
+                fn () => new UserResource($this->sellerProfile->user)
+            ),
             'sellerProfile'  => $this->whenLoaded('sellerProfile', fn () => [
                 'id' => $this->sellerProfile->id,
                 'nama_lengkap' => $this->sellerProfile->nama_lengkap,
-                'nama_toko' => $this->sellerProfile->nama_toko,
+                'nama_agen' => $this->sellerProfile->nama_agen,
                 'deskripsi' => $this->sellerProfile->deskripsi,
-                'foto_toko' => PublicStorageUrl::make($this->sellerProfile->foto_toko),
+                'foto_agen' => PublicStorageUrl::make($this->sellerProfile->foto_agen),
             ]),
             'images'         => PropertyImageResource::collection($this->whenLoaded('images')),
             'created_at'     => $this->created_at,

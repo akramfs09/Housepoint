@@ -7,6 +7,7 @@ use App\Http\Requests\InviteAdminRequest;
 use App\Http\Requests\UpdateAdminRequest;
 use App\Http\Resources\AdminResource;
 use App\Http\Traits\ApiResponse;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\AdminManagementService;
 use Illuminate\Http\Request;
@@ -89,5 +90,23 @@ class AdminManagementController extends Controller
     {
         $logs = $this->service->getAuditLogs($request->only(['per_page']));
         return $this->success($logs);
+    }
+
+    public function stats()
+    {
+        $roleAdmin = Role::where('nama_role', 'admin')->value('id');
+        $roleSuperAdmin = Role::where('nama_role', 'super_admin')->value('id');
+
+        $totalAdmin = User::whereIn('role_id', [$roleAdmin, $roleSuperAdmin])->count();
+        $adminAktif = User::whereIn('role_id', [$roleAdmin, $roleSuperAdmin])->where('is_banned', false)->count();
+        $superAdmin = User::where('role_id', $roleSuperAdmin)->count();
+        $nonaktif = User::whereIn('role_id', [$roleAdmin, $roleSuperAdmin])->where('is_banned', true)->count();
+
+        return $this->success([
+            'total_admin' => $totalAdmin,
+            'admin_aktif' => $adminAktif,
+            'super_admin' => $superAdmin,
+            'nonaktif' => $nonaktif,
+        ]);
     }
 }

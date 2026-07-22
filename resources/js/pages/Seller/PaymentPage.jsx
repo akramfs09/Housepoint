@@ -1,21 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { initiatePayment, fetchMyProperties } from '../../services/api';
+import { initiatePayment, fetchMyProperties, fetchMidtransConfig } from '../../services/api';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { loadMidtransSnap } from '../../utils/loadMidtransSnap';
 
 export default function PaymentPage() {
     const { id } = useParams();
     const navigate = useNavigate();
     const [property, setProperty] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [uploadPrice, setUploadPrice] = useState(null);
 
     useEffect(() => {
         const load = async () => {
             try {
-                const { data } = await fetchMyProperties();
+                const [propertiesRes, configRes] = await Promise.all([
+                    fetchMyProperties(),
+                    fetchMidtransConfig(),
+                ]);
+                const { data } = propertiesRes;
                 const found = (data.data || []).find((item) => item.id === parseInt(id, 10));
                 if (found) setProperty(found);
+                setUploadPrice(configRes.data?.data?.upload_price ?? 50000);
             } catch (error) {
                 toast.error('Gagal memuat data properti.');
             }
@@ -29,11 +36,12 @@ export default function PaymentPage() {
         setLoading(true);
 
         try {
+            const snap = await loadMidtransSnap();
             const { data } = await initiatePayment(property.id);
             const snapToken = data.data?.snap_token;
 
-            if (snapToken && window.snap) {
-                window.snap.pay(snapToken, {
+            if (snapToken && snap) {
+                snap.pay(snapToken, {
                     onSuccess: async function () {
                         try {
                             const response = await api.patch(`/seller/properties/${property.id}/publish`);
@@ -82,7 +90,9 @@ export default function PaymentPage() {
                 </div>
                 <div className="flex justify-between mb-4 pt-4 border-t">
                     <span className="font-bold text-lg">Total Pembayaran</span>
-                    <span className="font-bold text-lg text-blue-600">Rp 1.000</span>
+                    <span className="font-bold text-lg text-blue-600">
+                        Rp {(Number(uploadPrice) || 0).toLocaleString('id-ID')}
+                    </span>
                 </div>
 
                 <button

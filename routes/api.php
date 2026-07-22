@@ -11,8 +11,12 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\CustomerProfileController;
 use App\Http\Controllers\Api\SellerProfileController;
-use App\Http\Controllers\Api\SellerStoreController;
-use App\Http\Controllers\Api\StoreController;
+use App\Http\Controllers\Api\SellerAgenController;
+use App\Http\Controllers\Api\AgenController;
+use App\Http\Controllers\Api\SearchHistoryController;
+use App\Http\Controllers\Api\WebsiteContentController;
+use App\Http\Controllers\Api\ContactFeedbackController;
+use App\Http\Controllers\Api\MidtransConfigController;
 use Illuminate\Support\Facades\Route;
 
 // ================================================
@@ -20,11 +24,15 @@ use Illuminate\Support\Facades\Route;
 // ================================================
 Route::get('/locations/provinces', [LocationController::class, 'provinces']);
 Route::get('/locations/cities', [LocationController::class, 'cities']);
+Route::get('/website-content', [WebsiteContentController::class, 'show']);
+Route::get('/midtrans/config', [MidtransConfigController::class, 'show']);
+Route::get('/reviews', [ContactFeedbackController::class, 'publicReviews']);
+Route::get('/reviews/featured', [ContactFeedbackController::class, 'featuredReviews']);
 
 // ================================================
 //  Halaman Toko Seller (publik)
 // ================================================
-Route::get('/store/{seller}', [StoreController::class, 'show']);
+Route::get('/agen/{seller}', [AgenController::class, 'show']);
 
 // ================================================
 //  Katalog Unggulan (publik)
@@ -40,6 +48,10 @@ Route::get('/properties/featured', [PublicPropertyController::class, 'featured']
 Route::middleware(['auth:sanctum', 'banned', 'role:customer,seller'])->group(function () {
     Route::post('/properties/{property}/favorite', [PublicPropertyController::class, 'toggleFavorite']);
     Route::get('/favorites', [PublicPropertyController::class, 'favorites']);
+    Route::get('/search-history', [SearchHistoryController::class, 'index']);
+    Route::post('/search-history', [SearchHistoryController::class, 'store']);
+    Route::delete('/search-history', [SearchHistoryController::class, 'clear']);
+    Route::delete('/search-history/{searchHistory}', [SearchHistoryController::class, 'destroy']);
 });
 
 // ================================================
@@ -73,10 +85,29 @@ Route::prefix('auth')->group(function () {
         ->middleware('throttle:resend-otp');
     Route::patch('/password', [AuthController::class, 'changePassword'])
         ->middleware(['auth:sanctum', 'banned']);
+    Route::post('/verify-password', [AuthController::class, 'verifyPassword'])
+        ->middleware(['auth:sanctum', 'banned']);
+
+    // Google OAuth
+    Route::get('/google/redirect', [AuthController::class, 'googleRedirect']);
+    Route::get('/google/callback', [AuthController::class, 'googleCallback']);
 });
 
 Route::get('/user', [AuthController::class, 'me'])
     ->middleware(['auth:sanctum', 'banned']);
+
+// ================================================
+//  Kontak: Laporan Pengguna & Ulasan Website
+// ================================================
+Route::middleware(['auth:sanctum', 'banned'])->group(function () {
+    Route::get('/contact/reports', [ContactFeedbackController::class, 'myReports']);
+    Route::post('/contact/reports', [ContactFeedbackController::class, 'storeReport']);
+    Route::get('/contact/reports/{report}/messages', [ContactFeedbackController::class, 'reportMessages']);
+    Route::post('/contact/reports/{report}/messages', [ContactFeedbackController::class, 'sendReportMessage']);
+    Route::get('/contact/review', [ContactFeedbackController::class, 'myReview']);
+    Route::post('/contact/review', [ContactFeedbackController::class, 'upsertReview']);
+    Route::delete('/contact/review', [ContactFeedbackController::class, 'destroyReview']);
+});
 
 // ================================================
 //  Notifikasi (Semua Role yang Login)
@@ -102,8 +133,8 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     Route::middleware('role:seller')->group(function () {
         Route::get('/seller/profile', [SellerProfileController::class, 'show']);
         Route::post('/seller/profile', [SellerProfileController::class, 'update']);
-        Route::get('/seller/store', [SellerStoreController::class, 'show']);
-        Route::post('/seller/store', [SellerStoreController::class, 'update']);
+        Route::get('/seller/agen', [SellerAgenController::class, 'show']);
+        Route::post('/seller/agen', [SellerAgenController::class, 'update']);
     });
 });
 
@@ -140,6 +171,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
         Route::get('/seller/dashboard', [SellerController::class, 'dashboard']);
         
         Route::post('/seller/properties', [SellerController::class, 'store']);
+        Route::get('/seller/properties/{property}', [SellerController::class, 'show']);
         Route::put('/seller/properties/{property}', [SellerController::class, 'update']);
         Route::delete('/seller/properties/{property}', [SellerController::class, 'destroy']);
         Route::get('/seller/properties', [SellerController::class, 'myProperties']);
@@ -155,6 +187,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
         Route::get('/seller/featured-queue/eta', [SellerController::class, 'featuredQueueEta']);
         Route::post('/seller/properties/{property}/featured', [SellerController::class, 'initiateFeaturedPayment']);
         Route::patch('/seller/properties/{property}/featured/publish', [SellerController::class, 'publishFeatured']);
+        Route::patch('/seller/properties/{property}/featured/cancel', [SellerController::class, 'cancelFeaturedPayment']);
     });
 });
 
@@ -162,13 +195,28 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
 //  Admin
 // ================================================
 Route::middleware(['auth:sanctum', 'banned', 'role:admin,super_admin'])->group(function () {
+    Route::get('/admin/reports', [ContactFeedbackController::class, 'adminReports']);
+    Route::patch('/admin/reports/{report}', [ContactFeedbackController::class, 'updateReport']);
+    Route::get('/admin/reports/{report}/messages', [ContactFeedbackController::class, 'reportMessages']);
+    Route::post('/admin/reports/{report}/messages', [ContactFeedbackController::class, 'sendReportMessage']);
+    Route::get('/admin/website-reviews', [ContactFeedbackController::class, 'adminReviews']);
+    Route::patch('/admin/website-reviews/{review}', [ContactFeedbackController::class, 'updateReview']);
+
     Route::get('/admin/seller-verifications', [AdminController::class, 'sellerVerifications']);
     Route::get('/admin/seller-verifications/{seller}', [AdminController::class, 'showSeller']);
     Route::patch('/admin/seller-verifications/{seller}/approve', [AdminController::class, 'approveSeller']);
     Route::patch('/admin/seller-verifications/{seller}/reject', [AdminController::class, 'rejectSeller']);
+    Route::post('/admin/seller-verifications/ktp-access', [AdminController::class, 'confirmKtpAccess'])
+        ->middleware('role:super_admin');
+    Route::get('/admin/seller-ktp-reviews', [AdminController::class, 'sellerKtpReviews'])
+        ->middleware('role:super_admin');
 
     // Moderasi Properti
+    Route::get('/admin/properties', [AdminController::class, 'allProperties']);
     Route::get('/admin/properties/pending', [AdminController::class, 'propertyVerifications']);
+    Route::get('/admin/payment-histories', [AdminController::class, 'paymentHistories']);
+    Route::get('/admin/payment-histories/{paymentHistory}', [AdminController::class, 'showPaymentHistory']);
+    Route::get('/admin/users/stats', [AdminController::class, 'userStats']);
     Route::patch('/properties/{property}/approve', [AdminController::class, 'approveProperty']);
     Route::patch('/properties/{property}/reject', [AdminController::class, 'rejectProperty']);
 
@@ -193,6 +241,7 @@ Route::middleware(['auth:sanctum', 'banned', 'role:admin,super_admin'])->group(f
 // ================================================
 Route::middleware(['auth:sanctum', 'banned', 'role:super_admin'])->prefix('admin/admins')->group(function () {
     Route::get('/', [AdminManagementController::class, 'index']);
+    Route::get('/stats', [AdminManagementController::class, 'stats']);
     Route::get('/audit-logs', [AdminManagementController::class, 'auditLogs']);
     Route::get('/{admin}', [AdminManagementController::class, 'show']);
     Route::post('/', [AdminManagementController::class, 'store']);
@@ -200,4 +249,9 @@ Route::middleware(['auth:sanctum', 'banned', 'role:super_admin'])->prefix('admin
     Route::patch('/{admin}/deactivate', [AdminManagementController::class, 'deactivate']);
     Route::patch('/{admin}/reactivate', [AdminManagementController::class, 'reactivate']);
     Route::delete('/{admin}', [AdminManagementController::class, 'destroy']);
+});
+
+Route::middleware(['auth:sanctum', 'banned', 'role:super_admin'])->prefix('admin')->group(function () {
+    Route::get('/website-content', [WebsiteContentController::class, 'show']);
+    Route::post('/website-content', [WebsiteContentController::class, 'update']);
 });

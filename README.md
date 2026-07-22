@@ -1,58 +1,100 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# HousePoint
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+HousePoint adalah platform properti berbasis Laravel + React yang mendukung pencarian, detail properti, chat antara customer dan seller, verifikasi seller, moderasi properti, pembayaran Midtrans, notifikasi real-time, laporan pengguna, ulasan website, riwayat pencarian, dan pengelolaan konten website oleh superadmin.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Backend: Laravel 13, PHP 8.3
+- Frontend: React 19, Vite, React Router
+- Styling: Tailwind CSS
+- Auth: Laravel Sanctum
+- Real-time: Laravel Reverb, Pusher
+- Storage: Cloudflare R2 public/private
+- Payment: Midtrans Snap
+- Charts/UI support: Recharts, Lucide React, React Hot Toast
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Fitur Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Autentikasi login, register, OTP, reset password
+- Pencarian properti dengan filter
+- Detail properti lengkap dengan gambar, video, dan Google Maps
+- Favorit properti dan riwayat pencarian
+- Chat customer dan seller
+- Upgrade seller dengan verifikasi KTP
+- Kelola properti seller: draft, edit, submit moderasi, hapus
+- Moderasi properti oleh admin dan superadmin
+- Pembayaran listing dan unggulan
+- Notifikasi untuk user, seller, admin, dan superadmin
+- Laporan pengguna dengan thread balasan
+- Ulasan website oleh user
+- Kelola data website oleh superadmin: hero section, about, contact, footer, branding logo, dan lokasi
+- Kelola seller, user, admin, payment history, dan audit logs
 
-## Learning Laravel
+## Peran Pengguna
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Customer
+- Seller
+- Admin
+- Superadmin
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalasi
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Atur koneksi database, storage R2, Midtrans, dan Reverb di `.env` lalu jalankan:
 
-## Contributing
+```bash
+php artisan migrate --force
+php artisan db:seed --force
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Menjalankan Project
 
-## Code of Conduct
+### Development
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer run dev
+```
 
-## Security Vulnerabilities
+Perintah ini akan menjalankan:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Laravel server
+- queue listener
+- Vite dev server
+
+### Build Frontend
+
+```bash
+npm run build
+```
+
+## Struktur Akses Fitur
+
+- Public: home, katalog properti, detail properti, halaman agen, about, contact, reviews
+- Customer: favorites, riwayat pencarian, laporan pengguna, ulasan website, chat
+- Seller: dashboard, profil agen, kelola properti, pembayaran, chat, notifikasi
+- Admin: verifikasi seller, moderasi properti, kelola user, laporan, payment history
+- Superadmin: semua akses admin ditambah settings website, branding, review KTP, dan kontrol penuh data sistem
+
+## Catatan Implementasi
+
+- Identitas seller di UI dan API diarahkan ke istilah **Agen**
+- Media publik disimpan di R2 public
+- Dokumen sensitif seperti KTP disimpan di R2 private
+- Detail properti dapat menampilkan gambar, video, dan lokasi Google Maps
+- Halaman publik agen memakai route `/agen/{sellerId}`
+
+## Testing
+
+```bash
+php artisan test
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT

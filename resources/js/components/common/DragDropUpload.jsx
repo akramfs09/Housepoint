@@ -1,9 +1,19 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
-const DragDropUpload = ({ images, setImages, errors }) => {
+const DragDropUpload = ({ images, setImages, initialImages = [], errors }) => {
     const [dragActive, setDragActive] = useState(false);
+    const [existingImages, setExistingImages] = useState([]);
     const inputRef = useRef(null);
     const MAX_IMAGES = 10;
+
+    useEffect(() => {
+        const normalized = (initialImages || []).map((image, index) => ({
+            id: image.id ?? index,
+            preview: image.url || image.path || image,
+            label: `Foto tersimpan ${index + 1}`,
+        }));
+        setExistingImages(normalized);
+    }, [initialImages]);
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -30,10 +40,11 @@ const DragDropUpload = ({ images, setImages, errors }) => {
     };
 
     const addFiles = (files) => {
-        const remaining = MAX_IMAGES - images.length;
+        const remaining = MAX_IMAGES - existingImages.length - images.length;
         const newFiles = files.slice(0, remaining).map(file => ({
             file,
             preview: URL.createObjectURL(file),
+            label: file.name,
         }));
         setImages([...images, ...newFiles]);
     };
@@ -78,6 +89,23 @@ const DragDropUpload = ({ images, setImages, errors }) => {
             </div>
             {errors?.images && <p className="text-red-500 text-xs mt-1">{errors.images[0]}</p>}
 
+            {existingImages.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mt-4">
+                    {existingImages.map((img, i) => (
+                        <div key={img.id ?? i} className="relative rounded-lg overflow-hidden border border-amber-100 bg-white">
+                            <img
+                                src={img.preview}
+                                alt={img.label}
+                                className="w-full h-24 object-cover"
+                            />
+                            <div className="px-2 py-1 text-[10px] font-semibold text-gray-600 bg-amber-50 border-t border-amber-100">
+                                Tersimpan
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
             {/* Thumbnail Preview */}
             {images.length > 0 && (
                 <div className="grid grid-cols-5 gap-3 mt-4">
@@ -85,7 +113,7 @@ const DragDropUpload = ({ images, setImages, errors }) => {
                         <div key={i} className="relative group">
                             <img
                                 src={img.preview}
-                                alt={`Preview ${i + 1}`}
+                                alt={img.label || `Preview ${i + 1}`}
                                 className="w-full h-24 object-cover rounded-lg"
                             />
                             <button

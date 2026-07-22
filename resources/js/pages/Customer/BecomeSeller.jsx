@@ -147,7 +147,7 @@ const BecomeSeller = () => {
                 </p>
                 {rejectionHistory.length > 0 && (
                     <button onClick={() => setShowRejectionHistory(true)} className="text-[#C5A065] text-sm hover:underline">
-                        📋 Lihat Riwayat Penolakan ({rejectionHistory.length})
+                        Lihat Riwayat Penolakan ({rejectionHistory.length})
                     </button>
                 )}
                 <RejectionHistoryModal isOpen={showRejectionHistory} onClose={() => setShowRejectionHistory(false)} history={rejectionHistory} />
@@ -159,7 +159,6 @@ const BecomeSeller = () => {
     if (statusInfo?.has_applied && statusInfo?.status === 'approved') {
         return (
             <div className="bg-white rounded-2xl shadow-md border border-[#e5d8c0] p-8 text-center">
-                <div className="text-6xl mb-4">🎉</div>
                 <h2 className="text-xl font-bold text-[#2c2c2c] mb-2">Selamat! Anda Sudah Menjadi Seller</h2>
                 <p className="text-[#8b8478] text-sm max-w-md mx-auto mb-6">
                     Akun Anda telah disetujui sebagai seller. Sekarang Anda bisa mengelola properti dan mulai menjual.
@@ -174,7 +173,7 @@ const BecomeSeller = () => {
                 {rejectionHistory.length > 0 && (
                     <div>
                         <button onClick={() => setShowRejectionHistory(true)} className="text-[#C5A065] text-sm hover:underline">
-                            📋 Lihat Riwayat Penolakan ({rejectionHistory.length})
+                            Lihat Riwayat Penolakan ({rejectionHistory.length})
                         </button>
                     </div>
                 )}
@@ -233,7 +232,7 @@ const BecomeSeller = () => {
                     {rejectionHistory.length > 0 && (
                         <div className="text-center">
                             <button onClick={() => setShowRejectionHistory(true)} className="text-[#C5A065] text-sm hover:underline">
-                                📋 Lihat Riwayat Penolakan ({rejectionHistory.length})
+                                Lihat Riwayat Penolakan ({rejectionHistory.length})
                             </button>
                         </div>
                     )}
@@ -242,7 +241,7 @@ const BecomeSeller = () => {
                         {/* Nama Toko */}
                         <div>
                             <label className="block text-sm font-medium text-[#2c2c2c] mb-1">
-                                🏪 Nama Toko <span className="text-gray-400 font-normal">(opsional)</span>
+                                Nama Agen <span className="text-gray-400 font-normal">(opsional)</span>
                             </label>
                             <input type="text" name="nama_toko" value={formData.nama_toko} onChange={handleChange}
                                 className="w-full border border-[#e5dfd3] rounded-lg px-4 py-2 text-sm text-[#5a554c] focus:ring-1 focus:ring-[#C5A065] outline-none"
@@ -275,7 +274,7 @@ const BecomeSeller = () => {
 
                         {/* KTP */}
                         <div>
-                            <label className="block text-sm font-medium text-[#2c2c2c] mb-2">📄 Upload KTP</label>
+                            <label className="block text-sm font-medium text-[#2c2c2c] mb-2">Upload KTP</label>
                             <input type="file" accept="image/*" onChange={e => setKtpFile(e.target.files[0])}
                                 className="w-full border border-[#e5dfd3] rounded-lg px-4 py-2 text-[13px] text-[#5a554c] file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-[#C5A065] file:text-white hover:file:bg-[#b08d55] transition" required />
                             <p className="text-[11px] text-gray-400 mt-1">Format: JPG, JPEG, PNG (Maks 2 MB)</p>
@@ -287,7 +286,7 @@ const BecomeSeller = () => {
                         {/* Foto Profil Toko */}
                         <div>
                             <label className="block text-sm font-medium text-[#2c2c2c] mb-2">
-                                🏪 Upload Foto Toko <span className="text-gray-400 font-normal">(opsional)</span>
+                                Upload Foto Agen <span className="text-gray-400 font-normal">(opsional)</span>
                             </label>
                             <input type="file" accept="image/*" onChange={e => setFotoTokoFile(e.target.files[0])}
                                 className="w-full border border-[#e5dfd3] rounded-lg px-4 py-2 text-[13px] text-[#5a554c] file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-[#C5A065] file:text-white hover:file:bg-[#b08d55] transition" />

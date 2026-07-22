@@ -446,65 +446,65 @@ export default function ChatPage() {
     const hasNoConversations = filteredConversations.length === 0;
 
     return (
-        <div className="flex flex-col h-[calc(100vh-120px)] bg-transparent p-6 w-full max-w-5xl mx-auto overflow-hidden">
+        <div className="flex flex-col h-[calc(100vh-120px)] bg-transparent p-3 sm:p-6 w-full max-w-5xl mx-auto overflow-hidden">
             
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 flex-shrink-0">
+            <div className="grid grid-cols-3 gap-2 md:gap-4 mb-4 md:mb-6 flex-shrink-0">
                 <button
                     onClick={() => setFilter('all')}
-                    className={`bg-white rounded-xl py-4 px-6 flex items-center gap-4 text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
+                    className={`bg-white rounded-xl py-2 px-3 md:py-4 md:px-6 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-4 text-center sm:text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
                         filter === 'all' ? 'border-[#C5A065] ring-1 ring-[#C5A065]' : 'border-gray-100 hover:border-[#C5A065]'
                     }`}
                 >
-                    <div className="w-10 h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Total Percakapan</div>
-                        <div className="text-xl font-bold text-gray-900 leading-none">{stats.total}</div>
+                        <div className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Total</div>
+                        <div className="text-sm sm:text-xl font-black text-gray-900 leading-none">{stats.total}</div>
                     </div>
                 </button>
 
                 <button
                     onClick={() => setFilter('unread')}
-                    className={`bg-white rounded-xl py-4 px-6 flex items-center gap-4 text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
+                    className={`bg-white rounded-xl py-2 px-3 md:py-4 md:px-6 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-4 text-center sm:text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
                         filter === 'unread' ? 'border-[#C5A065] ring-1 ring-[#C5A065]' : 'border-gray-100 hover:border-[#C5A065]'
                     }`}
                 >
-                    <div className="w-10 h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Belum Dibaca</div>
-                        <div className="text-xl font-bold text-gray-900 leading-none">{stats.unread}</div>
+                        <div className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Baru</div>
+                        <div className="text-sm sm:text-xl font-black text-gray-900 leading-none">{stats.unread}</div>
                     </div>
                 </button>
 
                 <button
                     onClick={() => setFilter('archived')}
-                    className={`bg-white rounded-xl py-4 px-6 flex items-center gap-4 text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
-                        filter === 'archived' ? 'border-[#C5A065] ring-1 ring-[#C5A065]' : 'border-gray-100 hover:border-[#C5A065]'
+                    className={`bg-white rounded-xl py-2 px-3 md:py-4 md:px-6 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-4 text-center sm:text-left shadow-sm border transition-all duration-200 hover:shadow-md ${
+                        filter === 'archived' ? 'border-[#C5A065] ring-1 ring-[#C5A065]' : 'border-[#ebdcb9] hover:border-[#C5A065]'
                     }`}
                 >
-                    <div className="w-10 h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#FDF9F2] flex items-center justify-center text-[#C5A065] flex-shrink-0">
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                         </svg>
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Arsip</div>
-                        <div className="text-xl font-bold text-gray-900 leading-none">{stats.archived}</div>
+                        <div className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Arsip</div>
+                        <div className="text-sm sm:text-xl font-black text-gray-900 leading-none">{stats.archived}</div>
                     </div>
                 </button>
             </div>
 
             {/* Search Bar Input */}
-            <div className="mb-6 flex-shrink-0 relative">
+            <div className="mb-4 md:mb-6 flex-shrink-0 relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -525,12 +525,12 @@ export default function ChatPage() {
             </div>
 
             {/* Chat Layout Container */}
-            <div className="flex-1 flex gap-6 overflow-hidden min-h-0 h-full w-full">
+            <div className="flex-1 flex gap-4 md:gap-6 overflow-hidden min-h-0 h-full w-full">
                 
                 {/* KIRI: Daftar Percakapan */}
                 <div
-                    className={`flex flex-col overflow-y-auto h-full space-y-4 pr-1 transition-all duration-300 ${
-                        activeConversation ? 'w-[40%] border-r border-gray-100 pr-4' : 'w-full'
+                    className={`flex flex-col overflow-y-auto h-full space-y-3 pr-1 transition-all duration-300 ${
+                        activeConversation ? 'hidden md:flex md:w-[35%] md:border-r md:border-gray-100 md:pr-4' : 'w-full'
                     }`}
                 >
                     {hasNoConversations ? (
@@ -648,7 +648,7 @@ export default function ChatPage() {
 
                 {/* KANAN: Jendela Room Obrolan Aktif */}
                 {activeConversation && (
-                    <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden h-full">
+                    <div className="flex-1 flex flex-col bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden h-full w-full md:w-auto">
                         {/* Header Box */}
                         <div className="border-b border-gray-100 p-4 flex justify-between items-center flex-shrink-0">
                             <div>
@@ -657,8 +657,15 @@ export default function ChatPage() {
                                     <p className="text-xs text-gray-400 truncate max-w-xs">Properti: {activeConversation.property.title}</p>
                                 )}
                             </div>
-                            <button onClick={() => setActiveConversation(null)} className="text-xs bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 px-2.5 py-1.5 rounded-lg transition-all">
-                                Tutup Chat
+                            <button 
+                                onClick={() => setActiveConversation(null)} 
+                                className="text-xs bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 px-3 py-2 rounded-lg transition-all flex items-center gap-1.5"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5">
+                                    <path d="m15 18-6-6 6-6"/>
+                                </svg>
+                                <span className="hidden sm:inline">Tutup Chat</span>
+                                <span className="sm:hidden">Kembali</span>
                             </button>
                         </div>
                         

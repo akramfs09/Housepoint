@@ -6,21 +6,18 @@ import { fetchFeaturedProperties, fetchPublicProperties } from '../../services/a
 const SECTION_CONFIG = [
     {
         key: 'featured',
-        title: 'Unggulan',
-        icon: '🌟',
-        description: 'Slot promosi berbayar yang sedang tampil hari ini.',
+        title: 'Properti Unggulan',
+        description: 'Temukan rumah idaman yang paling dicari',
     },
     {
         key: 'popular',
-        title: 'Terpopuler Minggu Ini',
-        icon: '🔥',
-        description: 'Properti dengan kunjungan tertinggi dalam 7 hari terakhir.',
+        title: 'Properti Terbaru',
+        description: 'Properti terbaru bulan ini',
     },
     {
         key: 'favorited',
-        title: 'Terfavorit Minggu Ini',
-        icon: '💗',
-        description: 'Properti yang paling sering disimpan pengguna minggu ini.',
+        title: 'Rekomendasi Terbaik',
+        description: 'Rekomendasi properti untukmu',
     },
 ];
 
@@ -53,7 +50,7 @@ const FeaturedProperties = () => {
             try {
                 const [featuredResponse, catalogResponse] = await Promise.all([
                     fetchFeaturedProperties(),
-                    fetchPublicProperties({ per_page: 1 }),
+                    fetchPublicProperties({ sections_only: 1 }),
                 ]);
 
                 if (!isMounted) return;
@@ -107,13 +104,27 @@ const FeaturedProperties = () => {
     );
 };
 
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useRef } from 'react';
+
 const CatalogRail = ({ config, properties, loading, emptyMessage, onFavoriteChange }) => {
+    const scrollContainerRef = useRef(null);
+
+    const scroll = (direction) => {
+        if (scrollContainerRef.current) {
+            const scrollAmount = 300;
+            scrollContainerRef.current.scrollBy({
+                left: direction === 'left' ? -scrollAmount : scrollAmount,
+                behavior: 'smooth'
+            });
+        }
+    };
+
     return (
         <section className="max-w-[1180px] mx-auto px-4 sm:px-6 pt-12 first:pt-16 pb-2 min-w-0">
             <div className="flex items-end justify-between gap-4 mb-5">
                 <div>
                     <h3 className="text-[24px] md:text-[28px] font-bold flex items-center gap-2">
-                        <span aria-hidden="true">{config.icon}</span>
                         {config.title}
                     </h3>
                     <p className="text-[#8b8478] mt-1 text-[14px]">
@@ -121,20 +132,41 @@ const CatalogRail = ({ config, properties, loading, emptyMessage, onFavoriteChan
                     </p>
                 </div>
 
-                <Link
-                    to="/properties"
-                    className="shrink-0 text-[#c08a2c] font-semibold text-[14px] hover:underline"
-                >
-                    Lihat Semua →
-                </Link>
+                <div className="flex items-center gap-4">
+                    <Link
+                        to="/properties"
+                        className="hidden sm:block shrink-0 text-[#c08a2c] font-medium text-[14px] hover:underline"
+                    >
+                        Lihat Semua →
+                    </Link>
+                    
+                    <div className="hidden sm:flex items-center gap-2">
+                        <button 
+                            onClick={() => scroll('left')}
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e5d8c0] bg-white text-[#8b8478] shadow-sm transition hover:bg-[#fcf8f0] hover:text-[#c49a4a]"
+                        >
+                            <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button 
+                            onClick={() => scroll('right')}
+                            className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e5d8c0] bg-white text-[#8b8478] shadow-sm transition hover:bg-[#fcf8f0] hover:text-[#c49a4a]"
+                        >
+                            <ChevronRight className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div className="flex gap-5 overflow-x-auto pb-4 snap-x snap-mandatory">
+            <div 
+                ref={scrollContainerRef}
+                className="flex gap-5 overflow-x-auto pb-6 pt-2 scrollbar-hide snap-x snap-mandatory"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
                 {loading ? (
                     Array.from({ length: 4 }).map((_, index) => (
                         <div
                             key={index}
-                            className="min-w-[270px] sm:min-w-[280px] lg:min-w-[285px] h-[420px] rounded-[22px] bg-white/60 border border-[#e5d8c0] animate-pulse snap-start"
+                            className="min-w-[270px] sm:min-w-[280px] lg:min-w-[285px] h-[380px] rounded-[22px] bg-white/60 border border-[#e5d8c0] animate-pulse snap-start"
                         />
                     ))
                 ) : properties.length > 0 ? (

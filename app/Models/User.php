@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicStorageUrl;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -16,6 +17,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'google_id',
         'is_banned',
         'email_verified_at',
     ];
@@ -28,6 +30,10 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_banned' => 'boolean',
+    ];
+
+    protected $appends = [
+        'avatar_url',
     ];
 
     public function role()
@@ -72,5 +78,50 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Property::class, 'favorites')
                     ->withTimestamps();
+    }
+
+    public function searchHistories()
+    {
+        return $this->hasMany(SearchHistory::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(UserReport::class);
+    }
+
+    public function reportMessages()
+    {
+        return $this->hasMany(UserReportMessage::class, 'sender_id');
+    }
+
+    public function websiteReview()
+    {
+        return $this->hasOne(WebsiteReview::class);
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        $customerPhoto = $this->customerProfile?->foto_profil;
+        if ($customerPhoto) {
+            return PublicStorageUrl::make($customerPhoto);
+        }
+
+        $sellerPhoto = $this->sellerProfile?->foto_profil;
+        if ($sellerPhoto) {
+            return PublicStorageUrl::make($sellerPhoto);
+        }
+
+        $storePhoto = $this->sellerProfile?->foto_agen;
+        if ($storePhoto) {
+            return PublicStorageUrl::make($storePhoto);
+        }
+
+        return null;
+    }
+
+    public function receivesBroadcastNotificationsOn(): string
+    {
+        return 'user.' . $this->id;
     }
 }

@@ -1,316 +1,480 @@
-import { useState, useEffect, useCallback } from 'react';
-import api from '../../services/api'; // Menggunakan instance api sesuai struktur folder Anda
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { ChevronDown, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import api, { storeSearchHistory } from '../../services/api';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import PropertyCard from '../../components/common/PropertyCard';
-import { toast } from 'react-hot-toast';
+import ProvinceCitySelect from '../../components/common/ProvinceCitySelect';
+import { useAuth } from '../../hooks/useAuth';
 
 const PROPERTY_TYPES = [
     { value: 'rumah', label: 'Rumah' },
-    { value: 'apartemen', label: 'Apartemen' },
+    { value: 'apartemen', label: 'Apartement' },
     { value: 'villa', label: 'Villa' },
     { value: 'tanah', label: 'Tanah' },
 ];
 
 const SORT_OPTIONS = [
     { value: 'latest', label: 'Terbaru' },
-    { value: 'price_asc', label: 'Harga: Rendah → Tinggi' },
-    { value: 'price_desc', label: 'Harga: Tinggi → Rendah' },
+    { value: 'price_asc', label: 'Harga: Rendah ke Tinggi' },
+    { value: 'price_desc', label: 'Harga: Tinggi ke Rendah' },
     { value: 'popular', label: 'Paling Populer' },
 ];
 
-// Helper untuk menampilkan ringkasan harga di bawah slider (ex: Rp 100Jt, Rp 20M)
-const formatRupiahSingkat = (angka) => {
-    if (angka >= 1000000000) return `Rp ${(angka / 1000000000).toFixed(0)}M`;
-    if (angka >= 1000000) return `Rp ${(angka / 1000000).toFixed(0)}Jt`;
-    return `Rp ${angka}`;
+const MIN_PRICE = 100000000;
+const MAX_PRICE = 20000000000;
+
+const formatRupiahSingkat = (value) => {
+    if (value >= 1000000000) return `Rp ${(value / 1000000000).toFixed(0)}M`;
+    if (value >= 1000000) return `Rp ${(value / 1000000).toFixed(0)}Jt`;
+    return `Rp ${value}`;
+};
+
+const defaultFilters = {
+    search: '',
+    type: '',
+    province: '',
+    province_id: '',
+    city: '',
+    city_id: '',
+    min_price: '',
+    max_price: '',
+    sort_by: 'latest',
+    page: 1,
+};
+
+const getInitialFilters = (searchParams) => ({
+    ...defaultFilters,
+    search: searchParams.get('search') || '',
+    type: searchParams.get('type') || '',
+    province: searchParams.get('province') || '',
+    province_id: searchParams.get('province_id') || '',
+    city: searchParams.get('city') || '',
+    city_id: searchParams.get('city_id') || '',
+    min_price: searchParams.get('min_price') || '',
+    max_price: searchParams.get('max_price') || '',
+    sort_by: searchParams.get('sort_by') || 'latest',
+});
+
+const getInitialPriceRange = (searchParams) => ({
+    min: Number(searchParams.get('min_price')) || MIN_PRICE,
+    max: Number(searchParams.get('max_price')) || MAX_PRICE,
+});
+
+const buildCatalogSearchParams = (filters) => {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (['page', 'per_page'].includes(key)) return;
+        if (key === 'min_price' && Number(value) === MIN_PRICE) return;
+        if (key === 'max_price' && Number(value) === MAX_PRICE) return;
+        if (key === 'sort_by' && value === 'latest') return;
+        if (value !== '' && value !== null && value !== undefined) {
+            params.set(key, value);
+        }
+    });
+
+    return params;
 };
 
 const PropertyCatalog = () => {
+    const { user } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [pagination, setPagination] = useState(null);
+    const [filters, setFilters] = useState(() => getInitialFilters(searchParams));
+    const [priceRange, setPriceRange] = useState(() => getInitialPriceRange(searchParams));
 
-    // State filter terintegrasi dengan range harga standar mockup (100Jt - 20M)
-    const [filters, setFilters] = useState({
-        search: '',
-        type: '',
-        city: '',
-        min_price: 100000000,   // Rp 100 Juta
-        max_price: 20000000000, // Rp 20 Miliar
-        sort_by: 'latest',
-        page: 1,
-    });
-
-    // Fungsi fetch data dari API backend
     const loadProperties = useCallback(async (pageNumber, currentFilters) => {
         setLoading(true);
         try {
-            // Setel limit 12 agar pas membentuk susunan 3 kolom x 4 baris ke bawah
-            const params = { 
-                ...currentFilters, 
-                page: pageNumber, 
-                per_page: 12 
+            const params = {
+                ...currentFilters,
+                page: pageNumber,
+                per_page: 9,
             };
-            
-            // Bersihkan parameter jika nilainya kosong sebelum dikirim
-            Object.keys(params).forEach(key => {
+
+            Object.keys(params).forEach((key) => {
                 if (params[key] === '' || params[key] === null) delete params[key];
             });
 
             const { data } = await api.get('/properties', { params });
             const allData = data.data?.data || data.data || [];
+            const total = data.data?.meta?.total || allData.length;
             
             setProperties(Array.isArray(allData) ? allData : []);
             setPagination({
                 currentPage: data.data?.meta?.current_page || pageNumber,
                 lastPage: data.data?.meta?.last_page || 1,
-                total: data.data?.meta?.total || allData.length,
+                total,
             });
+
+            return { total };
         } catch (error) {
-            toast.error('Gagal memuat katalog properti.');
+            toast.error(error.response?.data?.message || 'Gagal memuat katalog properti.');
+            return null;
         } finally {
             setLoading(false);
         }
     }, []);
 
-    // Pemicu otomatis saat halaman atau pengurutan (sort) diganti oleh user
     useEffect(() => {
         loadProperties(filters.page, filters);
-    }, [filters.page, filters.sort_by, loadProperties]);
+    }, [loadProperties]);
 
     const handleFilterChange = (key, value) => {
-        setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+        setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
+    };
+
+    const handleProvinceChange = (value) => {
+        setFilters((prev) => ({
+            ...prev,
+            province: value,
+            province_id: '',
+            city: '',
+            city_id: '',
+            page: 1,
+        }));
+    };
+
+    const handleProvinceSelect = (value) => {
+        setFilters((prev) => ({
+            ...prev,
+            province_id: value || '',
+            page: 1,
+        }));
+    };
+
+    const handleCityChange = (value) => {
+        setFilters((prev) => ({
+            ...prev,
+            city: value,
+            city_id: '',
+            page: 1,
+        }));
+    };
+
+    const handleCitySelect = (value) => {
+        setFilters((prev) => ({
+            ...prev,
+            city_id: value || '',
+            page: 1,
+        }));
     };
 
     const handlePageChange = (page) => {
-        setFilters(prev => ({ ...prev, page }));
-        window.scrollTo({ top: 200, behavior: 'smooth' }); // Efek scroll up halus setelah ganti halaman
+        const nextFilters = { ...filters, page };
+        setFilters(nextFilters);
+        setSearchParams(buildCatalogSearchParams(nextFilters), { replace: true });
+        loadProperties(page, nextFilters);
+        window.scrollTo({ top: 120, behavior: 'smooth' });
     };
 
-    const applyActiveFilters = () => {
-        loadProperties(1, filters);
+    const buildSearchHistoryPayload = (currentFilters, resultCount) => {
+        const searchText = currentFilters.search?.trim() || '';
+        const historyFilters = {};
+
+        if (currentFilters.type) historyFilters.type = currentFilters.type;
+        if (currentFilters.province) historyFilters.province = currentFilters.province;
+        if (currentFilters.province_id) historyFilters.province_id = currentFilters.province_id;
+        if (currentFilters.city) historyFilters.city = currentFilters.city;
+        if (currentFilters.city_id) historyFilters.city_id = currentFilters.city_id;
+        if (Number(currentFilters.min_price) && Number(currentFilters.min_price) !== MIN_PRICE) {
+            historyFilters.min_price = Number(currentFilters.min_price);
+        }
+        if (Number(currentFilters.max_price) && Number(currentFilters.max_price) !== MAX_PRICE) {
+            historyFilters.max_price = Number(currentFilters.max_price);
+        }
+        if (currentFilters.sort_by && currentFilters.sort_by !== 'latest') {
+            historyFilters.sort_by = currentFilters.sort_by;
+        }
+
+        if (!searchText && Object.keys(historyFilters).length === 0) {
+            return null;
+        }
+
+        return {
+            search_text: searchText,
+            filters: historyFilters,
+            result_count: resultCount,
+        };
+    };
+
+    const recordSearchHistory = async (currentFilters, resultCount) => {
+        if (!user || !['customer', 'seller'].includes(user.role)) return;
+
+        const payload = buildSearchHistoryPayload(currentFilters, resultCount);
+        if (!payload) return;
+
+        try {
+            await storeSearchHistory(payload);
+        } catch (error) {
+            console.error('Gagal menyimpan riwayat pencarian:', error);
+        }
+    };
+
+    const applyActiveFilters = async () => {
+        const nextFilters = {
+            ...filters,
+            min_price: priceRange.min,
+            max_price: priceRange.max,
+            page: 1,
+        };
+        setFilters(nextFilters);
+        setSearchParams(buildCatalogSearchParams(nextFilters), { replace: true });
+
+        const result = await loadProperties(1, nextFilters);
+        if (result) {
+            await recordSearchHistory(nextFilters, result.total);
+        }
+    };
+
+    const resetFilters = () => {
+        setPriceRange({ min: MIN_PRICE, max: MAX_PRICE });
+        setFilters(defaultFilters);
+        setSearchParams({}, { replace: true });
+        loadProperties(1, defaultFilters);
     };
 
     return (
-        <div className="min-h-screen bg-[#FAF6EE] text-[#2c2c2c] font-sans antialiased text-left selection:bg-amber-200">
+        <div className="min-h-screen bg-[#f7f0e4] text-[#222222] font-sans antialiased text-left selection:bg-amber-200">
             <Navbar />
 
-            <div className="max-w-[1240px] mx-auto py-10 px-4">
+            <main className="max-w-[1120px] mx-auto px-5 pb-[74px] pt-9">
                 <div className="flex flex-col lg:flex-row gap-8 items-start">
-                    
-                    {/* ================= 1. SIDEBAR FILTER PERFECT PIXEL ================= */}
-                    <div className="w-full lg:w-[260px] flex-shrink-0">
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] p-6 sticky top-28 space-y-6">
-                            <div className="flex justify-between items-center">
-                                <h2 className="text-base font-bold text-gray-800 tracking-wide">Filter</h2>
-                                <button 
-                                    onClick={() => setFilters({
-                                        search: '', type: '', city: '',
-                                        min_price: 100000000, max_price: 20000000000,
-                                        sort_by: 'latest', page: 1
-                                    })}
-                                    className="text-[11px] font-bold text-amber-700 hover:underline"
+                    <aside className="w-full lg:w-[250px] flex-shrink-0">
+                        <div className="bg-white rounded-lg border border-[#f0e4cf] shadow-[0_8px_22px_rgba(75,55,25,0.035)] p-5 sticky top-24 space-y-5">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-[14px] font-semibold tracking-wide text-[#2f2a22]">Filter</h2>
+                                <button
+                                    type="button"
+                                    onClick={resetFilters}
+                                    className="text-[10px] font-semibold text-[#b88a35] hover:underline"
                                 >
-                                    Reset Semua
+                                    Reset
                                 </button>
                             </div>
 
-                            {/* Dropdown Lokasi */}
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Lokasi</label>
+                                <label className="block text-[9px] font-semibold uppercase tracking-[0.04em] text-[#8e8576] mb-2.5">
+                                    Kata Kunci
+                                </label>
                                 <div className="relative">
-                                    <select 
-                                        value={filters.city} 
-                                        onChange={(e) => handleFilterChange('city', e.target.value)}
-                                        className="w-full bg-[#FAF6EE]/60 border border-transparent rounded-xl px-3 py-3 text-xs text-gray-600 outline-none appearance-none cursor-pointer focus:bg-white focus:border-[#D3A25D] transition-all"
-                                    >
-                                        <option value="">📍 Lokasi Properti</option>
-                                        <option value="Sleman">Sleman, DIY</option>
-                                        <option value="Bantul">Bantul, DIY</option>
-                                        <option value="Yogyakarta">Yogyakarta Kota</option>
-                                        <option value="Jakarta">Jakarta Pusat</option>
-                                    </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 text-[10px]">▼</div>
+                                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#c49a4a]" />
+                                    <input
+                                        type="text"
+                                        value={filters.search}
+                                        onChange={(event) => handleFilterChange('search', event.target.value)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                applyActiveFilters();
+                                            }
+                                        }}
+                                        placeholder="Cari nama properti"
+                                        className="h-9 w-full rounded-md border border-[#eadcc4] bg-white pl-8 pr-3 text-[10px] text-[#5f574c] outline-none transition placeholder:text-[#b5ab9b] focus:border-[#c49a4a]"
+                                    />
                                 </div>
                             </div>
 
-                            {/* Checkbox Tipe Properti */}
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Tipe Properti</label>
-                                <div className="space-y-3">
-                                    {PROPERTY_TYPES.map(t => (
-                                        <label key={t.value} className="flex items-center gap-3 text-xs font-medium text-gray-600 cursor-pointer select-none group">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={filters.type === t.value}
-                                                onChange={() => handleFilterChange('type', filters.type === t.value ? '' : t.value)}
-                                                className="w-4 h-4 rounded border-gray-300 text-[#D3A25D] focus:ring-transparent checked:bg-[#D3A25D] cursor-pointer"
+                                <label className="block text-[9px] font-semibold uppercase tracking-[0.04em] text-[#8e8576] mb-2.5">
+                                    Lokasi
+                                </label>
+                                <ProvinceCitySelect
+                                    province={filters.province}
+                                    provinceId={filters.province_id}
+                                    city={filters.city}
+                                    cityId={filters.city_id}
+                                    onProvinceChange={handleProvinceChange}
+                                    onProvinceSelect={handleProvinceSelect}
+                                    onCityChange={handleCityChange}
+                                    onCitySelect={handleCitySelect}
+                                    errors={{}}
+                                    layout="vertical"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[9px] font-semibold uppercase tracking-[0.04em] text-[#8e8576] mb-2.5">
+                                    Tipe Properti
+                                </label>
+                                <div className="space-y-2">
+                                    {PROPERTY_TYPES.map((type) => (
+                                        <label
+                                            key={type.value}
+                                            className="flex cursor-pointer select-none items-center gap-2 text-[10px] font-medium text-[#5f574c]"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="property-type"
+                                                checked={filters.type === type.value}
+                                                onChange={() => handleFilterChange('type', type.value)}
+                                                className="h-3.5 w-3.5 cursor-pointer border-[#d7c8ac] text-[#c49a4a] focus:ring-0"
                                             />
-                                            <span className="group-hover:text-gray-900 transition-colors">{t.label}</span>
+                                            <span>{type.label}</span>
                                         </label>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* Dual Range Slider Rentang Harga (Fix Anti Macet) */}
                             <div>
-                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center mb-3">Rentang Harga</label>
-                                
-                                <div className="relative w-full h-7 flex items-center">
-                                    <div className="absolute w-full h-1 bg-amber-100 rounded-full"></div>
-                                    
-                                    {/* Indikator Bar Cokelat Aktif */}
-                                    <div 
-                                        className="absolute h-1 bg-[#D3A25D] rounded-full"
-                                        style={{
-                                            left: `${(filters.min_price / 30000000000) * 100}%`,
-                                            right: `${100 - (filters.max_price / 30000000000) * 100}%`
-                                        }}
-                                    ></div>
+                                <label className="block text-center text-[9px] font-semibold uppercase tracking-[0.04em] text-[#8e8576] mb-2.5">
+                                    Rentang Harga
+                                </label>
 
-                                    <input 
-                                        type="range"
-                                        min="0"
-                                        max="30000000000"
-                                        step="100000000"
-                                        value={filters.min_price}
-                                        onChange={(e) => {
-                                            const val = Math.min(Number(e.target.value), filters.max_price - 500000000);
-                                            handleFilterChange('min_price', val);
+                                <div className="relative flex h-7 w-full items-center">
+                                    <div className="absolute h-[3px] w-full rounded-full bg-[#eadbc3]" />
+                                    <div
+                                        className="absolute h-[3px] rounded-full bg-[#c49a4a]"
+                                        style={{
+                                            left: `${(priceRange.min / MAX_PRICE) * 100}%`,
+                                            right: `${100 - (priceRange.max / MAX_PRICE) * 100}%`,
                                         }}
-                                        className="absolute w-full appearance-none bg-transparent pointer-events-none z-20 outline-none
-                                                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                                                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#D3A25D] [&::-webkit-slider-thumb]:border-2 
-                                                   [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:cursor-pointer"
                                     />
 
-                                    <input 
+                                    <input
                                         type="range"
                                         min="0"
-                                        max="30000000000"
+                                        max={MAX_PRICE}
                                         step="100000000"
-                                        value={filters.max_price}
-                                        onChange={(e) => {
-                                            const val = Math.max(Number(e.target.value), filters.min_price + 500000000);
-                                            handleFilterChange('max_price', val);
+                                        value={priceRange.min}
+                                        onChange={(event) => {
+                                            const value = Math.min(Number(event.target.value), priceRange.max - 500000000);
+                                            setPriceRange((prev) => ({ ...prev, min: value }));
                                         }}
-                                        className="absolute w-full appearance-none bg-transparent pointer-events-none z-20 outline-none
-                                                   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 
-                                                   [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#D3A25D] [&::-webkit-slider-thumb]:border-2 
-                                                   [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:cursor-pointer"
+                                        className="absolute z-20 w-full appearance-none bg-transparent outline-none pointer-events-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#c49a4a] [&::-webkit-slider-thumb]:pointer-events-auto"
+                                    />
+
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max={MAX_PRICE}
+                                        step="100000000"
+                                        value={priceRange.max}
+                                        onChange={(event) => {
+                                            const value = Math.max(Number(event.target.value), priceRange.min + 500000000);
+                                            setPriceRange((prev) => ({ ...prev, max: value }));
+                                        }}
+                                        className="absolute z-20 w-full appearance-none bg-transparent outline-none pointer-events-none [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-[#c49a4a] [&::-webkit-slider-thumb]:pointer-events-auto"
                                     />
                                 </div>
 
-                                <div className="flex gap-2 items-center mt-2">
-                                    <div className="w-1/2 bg-[#FAF6EE]/80 border border-gray-100 rounded-xl py-2 text-center text-[10px] font-bold text-gray-700 shadow-inner">
-                                        {formatRupiahSingkat(filters.min_price)}
+                                <div className="mt-2 flex items-center gap-2">
+                                    <div className="w-1/2 rounded-md border border-[#eadcc4] bg-[#f8f1e5] py-1.5 text-center text-[9px] font-semibold text-[#4b4338]">
+                                        {formatRupiahSingkat(priceRange.min)}
                                     </div>
-                                    <span className="text-gray-400 text-xs font-semibold">ke</span>
-                                    <div className="w-1/2 bg-[#FAF6EE]/80 border border-gray-100 rounded-xl py-2 text-center text-[10px] font-bold text-gray-700 shadow-inner">
-                                        {formatRupiahSingkat(filters.max_price)}
+                                    <span className="text-[9px] font-semibold text-[#a89a84]">ke</span>
+                                    <div className="w-1/2 rounded-md border border-[#eadcc4] bg-[#f8f1e5] py-1.5 text-center text-[9px] font-semibold text-[#4b4338]">
+                                        {formatRupiahSingkat(priceRange.max)}
                                     </div>
                                 </div>
                             </div>
 
-                            <button 
+                            <button
+                                type="button"
                                 onClick={applyActiveFilters}
-                                className="w-full bg-[#D3A25D] hover:bg-[#bfa057] active:scale-[0.99] text-white py-3.5 rounded-xl text-xs font-bold transition shadow-sm tracking-wider"
+                                className="h-10 w-full rounded-md bg-[#c49a4a] text-[10px] font-semibold text-white shadow-sm transition hover:bg-[#ae8434] active:scale-[0.99]"
                             >
                                 Terapkan Filter
                             </button>
                         </div>
-                    </div>
+                    </aside>
 
-                    {/* ================= 2. GRID LIST KONTEN PRODUK BANYAK ================= */}
-                    <div className="flex-1 w-full">
-                        
-                        {/* Atasan Grid Info */}
-                        <div className="flex justify-between items-end gap-4 mb-8 px-1">
+                    <section className="w-full flex-1">
+                        <div className="mb-6 flex items-start justify-between gap-4 px-0.5">
                             <div>
-                                <h1 className="text-xl font-black text-gray-800 tracking-tight">Properti Pilihan</h1>
-                                <p className="text-xs text-gray-400 font-medium mt-1">
-                                    Menampilkan {properties.length} dari {pagination?.total || 456} pilihan properti premium
+                                <h1 className="text-[22px] font-bold leading-none tracking-tight text-[#2b261f]">Properti Pilihan</h1>
+                                <p className="mt-2 text-[11px] font-medium text-[#8b8478]">
+                                    Menampilkan {properties.length} dari {pagination?.total || 0} pilihan properti premium
                                 </p>
                             </div>
-                            
-                            {/* Sort Dropdown */}
-                            <div className="relative min-w-[130px]">
-                                <select 
+
+                            <div className="relative min-w-[150px]">
+                                <select
                                     value={filters.sort_by}
-                                    onChange={(e) => handleFilterChange('sort_by', e.target.value)}
-                                    className="w-full bg-white border border-gray-200/80 rounded-xl px-3 py-2.5 text-xs font-medium text-gray-700 outline-none appearance-none cursor-pointer shadow-sm focus:border-[#D3A25D]"
+                                    onChange={(event) => {
+                                        const nextSort = event.target.value;
+                                        const nextFilters = {
+                                            ...filters,
+                                            sort_by: nextSort,
+                                            page: 1,
+                                        };
+                                        setFilters(nextFilters);
+                                        setSearchParams(buildCatalogSearchParams(nextFilters), { replace: true });
+                                        loadProperties(1, nextFilters);
+                                    }}
+                                    className="h-8 w-full appearance-none rounded-md border border-[#eadcc4] bg-white px-3 pr-8 text-[10px] font-medium text-[#2f2a22] outline-none focus:border-[#c49a4a]"
                                 >
-                                    {SORT_OPTIONS.map(s => (
-                                        <option key={s.value} value={s.value}>{s.label}</option>
+                                    {SORT_OPTIONS.map((sort) => (
+                                        <option key={sort.value} value={sort.value}>
+                                            {sort.label}
+                                        </option>
                                     ))}
                                 </select>
-                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 text-[9px]">▼</div>
+                                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-[#9c927f]" />
                             </div>
                         </div>
 
-                        {/* Rendering Kondisional List */}
                         {loading ? (
-                            <div className="text-center py-32 text-xs font-medium text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                            <div className="rounded-lg border border-[#eadcc4] bg-white py-32 text-center text-xs font-medium text-[#8b8478]">
                                 Memuat katalog properti...
                             </div>
                         ) : properties.length === 0 ? (
-                            <div className="text-center py-32 bg-white rounded-3xl border border-gray-100 shadow-sm">
-                                <p className="text-gray-400 text-sm font-medium">😔 Tidak ada properti yang cocok dengan filter Anda</p>
+                            <div className="rounded-lg border border-[#eadcc4] bg-white py-32 text-center">
+                                <p className="text-sm font-medium text-[#8b8478]">Tidak ada properti yang cocok dengan filter Anda</p>
                             </div>
                         ) : (
                             <>
-                                {/* GRID UTAMA: 3 Kolom Sempurna Sejajar Ke Bawah Sesuai Gambar */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-8">
-                                    {properties.map(p => (
-                                        <PropertyCard 
-                                            key={p.id} 
-                                            property={p} 
-                                            mode="public" 
-                                        />
+                                <div className="grid grid-cols-1 gap-x-7 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                                    {properties.map((property) => (
+                                        <PropertyCard key={property.id} property={property} mode="public" />
                                     ))}
                                 </div>
 
-                                {/* ================= 3. LOGIKA NAVIGATION BOX (1 2 3 4...) ================= */}
                                 {pagination && pagination.lastPage > 1 && (
-                                    <div className="flex justify-center items-center gap-1.5 mt-14">
-                                        <button 
+                                    <div className="mt-14 flex items-center justify-center gap-2">
+                                        <button
+                                            type="button"
                                             onClick={() => handlePageChange(Math.max(1, filters.page - 1))}
                                             disabled={filters.page === 1}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs text-gray-400 bg-white border border-transparent hover:border-gray-200 shadow-sm disabled:opacity-30"
+                                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#eadcc4] bg-white text-[#9c927f] hover:border-[#c49a4a] disabled:opacity-35"
                                         >
-                                            ‹
+                                            <ChevronLeft className="h-3.5 w-3.5" />
                                         </button>
 
-                                        {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map((page) => (
-                                            <button 
-                                                key={page} 
+                                        {Array.from({ length: pagination.lastPage }, (_, index) => index + 1).map((page) => (
+                                            <button
+                                                type="button"
+                                                key={page}
                                                 onClick={() => handlePageChange(page)}
-                                                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                                className={`h-8 w-8 rounded-md text-[10px] font-semibold transition ${
                                                     page === pagination.currentPage
-                                                        ? 'bg-[#93702d] text-white' // Cokelat emas aktif persis mockup
-                                                        : 'text-gray-500 bg-white border border-transparent hover:border-gray-200'
+                                                        ? 'bg-[#80601f] text-white'
+                                                        : 'border border-[#eadcc4] bg-white text-[#8b8478] hover:border-[#c49a4a]'
                                                 }`}
                                             >
                                                 {page}
                                             </button>
                                         ))}
 
-                                        <button 
+                                        <button
+                                            type="button"
                                             onClick={() => handlePageChange(Math.min(pagination.lastPage, filters.page + 1))}
                                             disabled={filters.page === pagination.lastPage}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-xs text-gray-400 bg-white border border-transparent hover:border-gray-200 shadow-sm disabled:opacity-30"
+                                            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#eadcc4] bg-white text-[#9c927f] hover:border-[#c49a4a] disabled:opacity-35"
                                         >
-                                            ›
+                                            <ChevronRight className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
                                 )}
                             </>
                         )}
-                    </div>
-
+                    </section>
                 </div>
-            </div>
+            </main>
 
             <Footer />
         </div>

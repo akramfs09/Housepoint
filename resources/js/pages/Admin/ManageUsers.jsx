@@ -39,11 +39,12 @@ const ManageUsers = () => {
             const res = await api.get('/admin/users/stats'); 
             
             // Asumsi response backend mengembalikan struktur data seperti ini
+            const statsData = res.data?.data || res.data || {};
             setStats({
-                totalUsers: res.data.total_users || 0,
-                totalBuyers: res.data.total_buyers || 0,
-                totalSellers: res.data.total_sellers || 0,
-                userSuspended: res.data.total_suspended || 0,
+                totalUsers: statsData.total_users || 0,
+                totalBuyers: statsData.total_buyers || 0,
+                totalSellers: statsData.total_sellers || 0,
+                userSuspended: statsData.total_suspended || 0,
             });
         } catch (err) {
             console.error("Gagal mengambil data statistik:", err);
@@ -105,6 +106,26 @@ const ManageUsers = () => {
         fetchStats();
     };
 
+    const handleAppealAction = async (user, action) => {
+        const appealId = user?.pending_appeal?.id;
+        if (!appealId) {
+            alert('Data banding tidak ditemukan.');
+            return;
+        }
+
+        try {
+            if (action === 'approve') {
+                await api.patch(`/admin/seller/appeals/${appealId}/approve`);
+            } else {
+                const catatan = window.prompt('Catatan penolakan banding (opsional):') || '';
+                await api.patch(`/admin/seller/appeals/${appealId}/reject`, { catatan_internal: catatan });
+            }
+            handleRefreshData();
+        } catch (err) {
+            alert(err.response?.data?.message || 'Gagal memproses banding.');
+        }
+    };
+
     // Format Tanggal
     const formatDate = (dateString) => {
         if (!dateString) return "-";
@@ -116,24 +137,13 @@ const ManageUsers = () => {
         { key: 'all', label: 'Semua' },
         { key: 'customer', label: 'Customer' },
         { key: 'seller', label: 'Seller' },
-        { key: 'appeal', label: '🔔 Banding' },
+        { key: 'appeal', label: 'Banding' },
     ];
 
     return (
         <div className="space-y-6 bg-[#fdfaf5] min-h-screen p-6 rounded-3xl">
             
-            {/* Header dengan indikator Real-time */}
-            <div className="flex justify-between items-center mb-2">
-                <div>
-                    <h2 className="text-2xl font-extrabold text-[#2c2c2c]">Manajemen Pengguna</h2>
-                    <p className="text-sm text-[#8b8478] mt-1">Pantau dan kelola seluruh aktivitas pengguna platform.</p>
-                </div>
-                <div className="bg-white px-4 py-2 rounded-full text-xs font-bold text-[#8b8478] flex items-center gap-2 border border-[#e5d8c0] shadow-sm">
-                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-                    Live Data (DB Sync)
-                </div>
-            </div>
-
+            
             {/* Top Stats Cards (Real-time Database) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {statCards.map((stat) => (
@@ -248,13 +258,44 @@ const ManageUsers = () => {
                                         </td>
 
                                         {/* Kolom Aksi */}
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => { setSelectedUser(user); setShowDetail(true); }}
-                                                className="text-[#D4AD5D] font-bold text-sm hover:text-[#b58b3f] transition-colors"
-                                            >
-                                                Manage
-                                            </button>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                                {activeTab === 'appeal' ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleAppealAction(user, 'approve')}
+                                                            className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-700"
+                                                        >
+                                                            Setuju
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleAppealAction(user, 'reject')}
+                                                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
+                                                        >
+                                                            Tolak
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => { setSelectedUser(user); setShowDetail(true); }}
+                                                            className="rounded-lg border border-[#e5d8c0] bg-white px-3 py-1.5 text-xs font-bold text-[#8b6b2d] transition-colors hover:border-[#D4AD5D] hover:bg-[#fff7e8]"
+                                                        >
+                                                            Detail
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setSelectedUser(user); setShowBan(true); }}
+                                                            className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors ${
+                                                                user.is_banned
+                                                                    ? 'bg-green-600 hover:bg-green-700'
+                                                                    : 'bg-red-600 hover:bg-red-700'
+                                                            }`}
+                                                        >
+                                                            {user.is_banned ? 'Unban' : 'Ban'}
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

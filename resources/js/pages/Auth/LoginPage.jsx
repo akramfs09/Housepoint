@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebsiteContent } from '../../hooks/useWebsiteContent';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('');
@@ -11,8 +12,16 @@ const LoginPage = () => {
     const [fieldErrors, setFieldErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // 🌟 State Baru untuk Mengontrol Modal Notifikasi Pop-up
+    const [showNotification, setShowNotification] = useState({
+        visible: false,
+        type: 'success', // 'success' atau 'failed'
+    });
+
     const { login } = useAuth();
+    const { content } = useWebsiteContent();
     const navigate = useNavigate();
+    const authLogo = content.branding?.auth_logo_url || content.branding?.header_logo_url || '/logo.png';
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,14 +31,26 @@ const LoginPage = () => {
 
         try {
             const user = await login(email, password);
-            if (user.role === 'super_admin' || user.role === 'admin') {
-                navigate('/admin/dashboard');
-            } else if (user.role === 'seller') {
-                navigate('/seller/dashboard');
-            } else {
-                navigate('/customer/dashboard');
-            }
+            
+            // 🌟 1. Jika Login Berhasil: Tampilkan Pop-up Berhasil
+            setShowNotification({ visible: true, type: 'success' });
+
+            // Berikan jeda waktu 2 detik agar user bisa melihat notifikasi sebelum berpindah halaman
+            setTimeout(() => {
+                setShowNotification({ visible: false, type: 'success' });
+                if (user.role === 'super_admin' || user.role === 'admin') {
+                    navigate('/admin/dashboard');
+                } else if (user.role === 'seller') {
+                    navigate('/seller/dashboard');
+                } else {
+                    navigate('/customer/dashboard');
+                }
+            }, 2000);
+
         } catch (err) {
+            // 🌟 2. Jika Login Gagal: Tampilkan Pop-up Gagal
+            setShowNotification({ visible: true, type: 'failed' });
+            
             if (err.response?.status === 403) {
                 setError(err.response?.data?.message || 'Akun Anda tidak dapat digunakan.');
             } else {
@@ -46,21 +67,63 @@ const LoginPage = () => {
     return (
         <div className="min-h-screen bg-[#FDF6E2] flex flex-col justify-between font-sans antialiased select-none selection:bg-[#D4A44C]/30 relative overflow-x-hidden">
             
-            {/* 1. BACKGROUND HERO (Sisi Kiri, Melengkung di Kanan Atas - Tidak Terbalik) */}
+            {/* 🌟 OVERLAY MODAL NOTIFIKASI POP-UP (MUNCUL DI TENGAH LAYAR) 🌟 */}
+            {showNotification.visible && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] transition-all duration-300 animate-fade-in">
+                    
+                    {/* KONDISI 1: POP-UP LOGIN GAGAL */}
+                    {showNotification.type === 'failed' && (
+                        <div className="w-[90%] max-w-[400px] bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-red-100 flex flex-col items-center justify-center relative transform scale-100 animate-pop-up">
+                            {/* Tombol Close silang kecil di pojok kanan atas untuk menutup manual jika gagal */}
+                            <button 
+                                onClick={() => setShowNotification({ visible: false, type: 'failed' })}
+                                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-sm">
+                                ✕
+                            </button>
+                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-5">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">Login Gagal</h2>
+                            <p className="text-xs sm:text-sm text-gray-500 max-w-[280px] leading-relaxed">
+                                Pastikan Username dan Password benar.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* KONDISI 2: POP-UP LOGIN BERHASIL */}
+                    {showNotification.type === 'success' && (
+                        <div className="w-[90%] max-w-[400px] bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-amber-100 flex flex-col items-center justify-center transform scale-100 animate-pop-up">
+                            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center text-[#D4A44C] mb-5">
+                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">Login Berhasil</h2>
+                            <p className="text-xs sm:text-sm text-gray-500 max-w-[280px] leading-relaxed">
+                                Anda berhasil masuk ke Akun Housepoint.
+                            </p>
+                        </div>
+                    )}
+
+                </div>
+            )}
+
+            {/* 1. BACKGROUND HERO */}
             <div className="absolute left-0 top-0 bottom-0 w-full lg:w-[42%] h-[45vh] lg:h-full z-0 overflow-hidden rounded-br-[120px] lg:rounded-br-none lg:rounded-tr-[380px] shadow-[12px_0_30px_rgba(0,0,0,0.04)]">
                 <img
                     src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop"
                     alt="Property Background"
                     className="w-full h-full object-cover transform scale-105 hover:scale-110 transition-transform duration-700"
                 />
-                {/* Overlay gelap gradasi agar teks putih kontras dan mudah dibaca */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/50 to-black/35 mix-blend-multiply" />
             </div>
 
-            {/* 2. LOGO UTAMA (Berada di atas gambar sisi kiri) */}
+            {/* 2. LOGO UTAMA */}
             <div className="w-full h-[95px] px-6 lg:px-[100px] flex items-center z-30 relative">
                 <img
-                    src="/logo.png"
+                    src={authLogo}
                     alt="HousePoint"
                     className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 cursor-pointer"
                 />
@@ -69,7 +132,7 @@ const LoginPage = () => {
             {/* 3. AREA UTAMA KONTEN GRID */}
             <div className="flex-1 w-full max-w-[1440px] mx-auto px-6 lg:px-[100px] pt-4 lg:pt-0 pb-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 relative">
                 
-                {/* Bagian Kiri: Tempat Susunan Teks di Atas Latar Belakang */}
+                {/* Bagian Kiri: Teks */}
                 <div className="col-span-1 lg:col-span-4 flex flex-col justify-center min-h-[200px] lg:min-h-0 lg:pr-4 z-20">
                     <div className="z-10 text-white animate-fade-in-left space-y-4 lg:pl-4 max-w-sm">
                         <h1 className="text-4xl lg:text-[42px] font-bold leading-tight tracking-wide text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.5)]">
@@ -174,7 +237,7 @@ const LoginPage = () => {
                                     )}
                                 </div>
 
-                                {/* Opsi Simpan Sesi & Lupa Sandi */}
+                                {/* Opsi Simpan Sesi */}
                                 <div className="flex items-center justify-between pt-1 pb-2">
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <input
@@ -215,9 +278,9 @@ const LoginPage = () => {
 
                         {/* Opsi Login Pihak Ketiga & Navigasi Luar */}
                         <div className="space-y-4">
-                            {/* Tombol Integrasi Akun Google */}
                             <button
                                 type="button"
+                                onClick={() => window.location.href = 'http://localhost:8000/api/auth/google/redirect'}
                                 className="w-full h-11 border border-gray-200 hover:border-[#D4A44C] bg-white rounded-xl flex items-center justify-center gap-2.5 text-sm font-bold text-gray-700 hover:bg-amber-50/20 active:scale-[0.98] transition-all duration-200"
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -229,7 +292,6 @@ const LoginPage = () => {
                                 <span>Masuk Dengan Google</span>
                             </button>
 
-                            {/* Tautan Alternatif Registrasi */}
                             <div className="text-center text-xs sm:text-sm text-gray-600">
                                 Belum punya akun?{' '}
                                 <Link to="/register" className="text-[#D4A44C] font-bold hover:underline">
@@ -237,7 +299,6 @@ const LoginPage = () => {
                                 </Link>
                             </div>
 
-                            {/* Tombol Kembali ke Beranda */}
                             <div className="text-center">
                                 <Link
                                     to="/"
@@ -251,7 +312,7 @@ const LoginPage = () => {
                     </div>
                 </div>
 
-                {/* Bagian Kanan: Panel Daftar Statistik Real Estate */}
+                {/* Bagian Kanan: Panel Daftar Statistik */}
                 <div className="col-span-1 lg:col-span-3 flex flex-col gap-4 w-full max-w-[280px] mx-auto lg:ml-auto lg:mr-0 animate-fade-in-right">
                     {[
                         { 

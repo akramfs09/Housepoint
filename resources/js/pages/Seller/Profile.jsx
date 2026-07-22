@@ -1,26 +1,30 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // ➕ Diimpor untuk navigasi state
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
-import { ChevronRight, Eye, Heart, MessageSquare } from 'lucide-react';
+import { ChevronRight, Mail, Bell, CheckCircle2 } from 'lucide-react';
 
 const SellerProfile = () => {
+    const navigate = useNavigate(); // ➕ Inisialisasi hook navigate
     const { refreshUser } = useAuth();
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     
+    // 🌟 Ditambahkan field 'jenis_kelamin' sesuai dengan mockup gambar
     const [form, setForm] = useState({
-        name: '', email: '', nama_lengkap: '', no_hp: '', alamat: '', jenis_kelamin: '', kota: ''
+        name: '', 
+        email: '', 
+        nama_lengkap: '', 
+        no_hp: '', 
+        jenis_kelamin: 'Laki - Laki',
+        alamat: '', 
+        kota: 'DIY'
     });
     const [previewFoto, setPreviewFoto] = useState(null);
     const [fotoFile, setFotoFile] = useState(null);
 
-    // Data Aktivitas Terbaru sesuai dengan yang tertera di image_962241.png
-    const [activities] = useState([
-        { id: 1, type: 'view', title: 'Melihat Menteng Royal Villa', desc: 'Terakhir dilihat 2 jam yang lalu • Jakarta Pusat' },
-        { id: 2, type: 'favorite', title: 'Menyimpan Favorit: Kemang Residence', desc: 'Kemarin • Jakarta Selatan' },
-        { id: 3, type: 'contact', title: 'Menghubungi Agen Budi Santoso', desc: '2 hari yang lalu • Terkait: Pondok Indah Suites' }
-    ]);
+    const [activities, setActivities] = useState([]);
 
     useEffect(() => { loadProfile(); }, []);
 
@@ -33,11 +37,12 @@ const SellerProfile = () => {
                 email: d.email || '',
                 nama_lengkap: d.nama_lengkap || '', 
                 no_hp: d.no_hp || '',
+                jenis_kelamin: d.jenis_kelamin || 'Laki - Laki',
                 alamat: d.alamat || '', 
-                jenis_kelamin: d.jenis_kelamin || '',
                 kota: d.kota || 'DIY'
             });
             setPreviewFoto(d.foto_profil || null);
+            setActivities(d.activities || []);
         } catch { 
             toast.error('Gagal memuat profil.'); 
         } finally { 
@@ -72,115 +77,161 @@ const SellerProfile = () => {
         }
     };
 
+    // ➕ Fungsi handler untuk mengirim state ke halaman properti seller
+    const handleJualPropertiClick = () => {
+        navigate('/seller/properties', { state: { activeTab: 'upload' } });
+    };
+
     if (loading) return <div className="py-20 text-center text-gray-500">Memuat...</div>;
 
     return (
-        <div className="max-w-5xl mx-auto px-4 py-8 bg-[#FAF6EE] min-h-screen text-left text-[#2c2c2c]">
-            
-            {/* Header Judul Halaman */}
-            <div className="flex justify-between items-start mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Profil Saya</h1>
-                    <p className="text-xs text-gray-400 mt-1">Kelola informasi akun dan aktivitas Anda.</p>
-                </div>
-                {/* Icon shortcut Mail & Bell di sudut kanan atas */}
-                <div className="flex items-center gap-2">
-                    <button className="p-2 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-500 hover:bg-gray-50">
-                        <MessageSquare size={16} />
-                    </button>
-                    <button className="p-2 bg-white rounded-xl border border-gray-100 shadow-sm text-gray-500 hover:bg-gray-50">
-                        <Eye size={16} />
-                    </button>
-                </div>
-            </div>
+        <div className="w-full max-w-4xl mx-auto text-left font-sans px-4 py-6 bg-[#FCF9F4] min-h-screen">
 
-            {/* Grid Informasi Utama (2 Kolom: Form Profil & Banner Iklan) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start mb-8">
+            {/* Grid Utama */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mb-8">
                 
-                {/* BOX KIRI & TENGAH: FORM INFORMASI PROFIL */}
-                <div className="md:col-span-2 bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+                {/* CARD KIRI-TENGAH: INFORMASI PROFIL */}
+                <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-50">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-base font-bold text-gray-800">Informasi Profil</h2>
+                        <h2 className="text-md font-bold text-[#1A1A1A]">Informasi Profil</h2>
                         <button
                             type="button"
                             onClick={() => { if (editing) loadProfile(); setEditing(!editing); }}
-                            className="px-3 py-1.5 border border-[#e5d8c0] text-amber-600 text-xs font-semibold rounded-xl hover:bg-amber-50/50 transition"
+                            className="px-4 py-1.5 border border-[#C5A065] text-[#C5A065] text-xs font-semibold rounded-lg hover:bg-[#FAF6EE] transition"
                         >
-                            ✏️ {editing ? 'Batal' : 'Edit Profil'}
+                            {editing ? 'Batal' : 'Edit Profil'}
                         </button>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Area Foto Avatar & Status Verifikasi */}
-                        <div className="flex flex-col items-center justify-center pb-2">
-                            <div className="w-24 h-24 rounded-full overflow-hidden border border-gray-100 mb-3 shadow-inner">
-                                <img src={previewFoto || "https://via.placeholder.com/150"} className="w-full h-full object-cover" alt="Profile" />
+                    <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-8">
+                        {/* Sisi Kiri: Avatar & Status Agen */}
+                        <div className="flex flex-col items-center shrink-0 w-full md:w-44 text-center">
+                            <div className="w-28 h-28 rounded-full overflow-hidden bg-gray-100 border border-gray-200 mb-4">
+                                {previewFoto ? (
+                                    <img src={previewFoto} className="w-full h-full object-cover" alt="Profile" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-[#EAE4DB] text-2xl font-bold text-[#C5A065]">
+                                        {form.nama_lengkap?.charAt(0).toUpperCase() || 'A'}
+                                    </div>
+                                )}
                             </div>
                             
-                            <div className="mb-3">
-                                <div className="inline-flex items-center gap-1.5 px-4 py-1 rounded-full text-[10px] font-medium bg-[#E8F7F0] text-[#10B981] border border-[#A7F3D0]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]"></span>
-                                    Verifikasi Agen
-                                </div>
+                            {/* Status Terverifikasi Agen (Sesuai Gambar) */}
+                            <div className="flex items-center gap-1.5 px-4 py-1 bg-[#E8F7F0] text-[#10B981] rounded-full border border-[#D1FAE5] mb-4 text-xs font-medium">
+                                <span className="w-2 h-2 rounded-full bg-[#10B981]"></span>
+                                Verifikasi Agen
                             </div>
 
-                            <label className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-1.5 border border-[#D3A25D] rounded-xl text-xs font-medium text-[#D3A25D] hover:bg-[#FAF6EE] transition">
-                                📷 Ubah Foto
+                            <label className="cursor-pointer border border-[#C5A065] rounded-xl px-4 py-1.5 text-xs font-semibold text-[#C5A065] hover:bg-[#FAF6EE] transition flex items-center gap-1">
+                                Ubah Foto
                                 <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                             </label>
                         </div>
 
-                        {/* Input Fields */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Sisi Kanan: Form Input Fields Grid */}
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">Nama Lengkap</label>
-                                <input type="text" name="nama_lengkap" value={form.nama_lengkap} onChange={handleChange} disabled={!editing} className="w-full bg-[#FAF6EE]/40 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#D3A25D] disabled:bg-[#FAF6EE]/20" />
+                                <label className="block text-xs text-gray-400 mb-1">Nama Lengkap</label>
+                                <input 
+                                    type="text" 
+                                    name="nama_lengkap" 
+                                    disabled={!editing} 
+                                    value={form.nama_lengkap} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90" 
+                                />
                             </div>
+                            
                             <div>
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">Email</label>
-                                <input type="email" value={form.email} disabled className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-[#FAF6EE]/20 text-gray-400 cursor-not-allowed" />
+                                <label className="block text-xs text-gray-400 mb-1">Email</label>
+                                <input 
+                                    type="type" 
+                                    name="email" 
+                                    disabled={!editing} 
+                                    value={form.email} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90" 
+                                />
                             </div>
+
                             <div>
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">No. Telepon</label>
-                                <input type="text" name="no_hp" value={form.no_hp} onChange={handleChange} disabled={!editing} className="w-full bg-[#FAF6EE]/40 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#D3A25D] disabled:bg-[#FAF6EE]/20" />
+                                <label className="block text-xs text-gray-400 mb-1">No. Telepon</label>
+                                <input 
+                                    type="text" 
+                                    name="no_hp" 
+                                    disabled={!editing} 
+                                    value={form.no_hp} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90" 
+                                />
                             </div>
+
                             <div>
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">Jenis Kelamin</label>
-                                <select name="jenis_kelamin" value={form.jenis_kelamin} onChange={handleChange} disabled={!editing} className="w-full bg-[#FAF6EE]/40 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#D3A25D] disabled:bg-[#FAF6EE]/20">
-                                    <option value="L">Laki - Laki</option>
-                                    <option value="P">Perempuan</option>
+                                <label className="block text-xs text-gray-400 mb-1">Jenis Kelamin</label>
+                                <select 
+                                    name="jenis_kelamin" 
+                                    disabled={!editing} 
+                                    value={form.jenis_kelamin} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90 appearance-none"
+                                >
+                                    <option value="Laki - Laki">Laki - Laki</option>
+                                    <option value="Perempuan">Perempuan</option>
                                 </select>
                             </div>
-                            <div className="sm:col-span-2">
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">Alamat</label>
-                                <textarea name="alamat" value={form.alamat} onChange={handleChange} disabled={!editing} rows={2} className="w-full bg-[#FAF6EE]/40 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none resize-none focus:border-[#D3A25D] disabled:bg-[#FAF6EE]/20" />
-                            </div>
-                            <div className="sm:col-span-1">
-                                <label className="block text-[11px] text-gray-400 font-semibold mb-1">Kota</label>
-                                <input type="text" name="kota" value={form.kota} onChange={handleChange} disabled={!editing} className="w-full bg-[#FAF6EE]/40 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-700 outline-none focus:border-[#D3A25D] disabled:bg-[#FAF6EE]/20" />
-                            </div>
-                        </div>
 
-                        {editing && (
-                            <div className="text-right pt-2">
-                                <button type="submit" className="px-5 py-2 bg-[#D3A25D] text-white text-xs font-bold rounded-xl shadow-sm transition">
-                                    Simpan Perubahan
-                                </button>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs text-gray-400 mb-1">Alamat</label>
+                                <input 
+                                    type="text" 
+                                    name="alamat" 
+                                    disabled={!editing} 
+                                    value={form.alamat} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90" 
+                                />
                             </div>
-                        )}
+
+                            <div className="md:col-span-2">
+                                <label className="block text-xs text-gray-400 mb-1">Kota</label>
+                                <input 
+                                    type="text" 
+                                    name="kota" 
+                                    disabled={!editing} 
+                                    value={form.kota} 
+                                    onChange={handleChange} 
+                                    className="w-full bg-[#FCFBF9] border border-[#F1ECE4] rounded-xl px-3 py-2.5 text-xs font-medium text-gray-800 outline-none focus:border-[#C5A065] disabled:opacity-90 w-1/2" 
+                                />
+                            </div>
+
+                            {editing && (
+                                <div className="md:col-span-2 text-right pt-2">
+                                    <button type="submit" className="px-5 py-2 bg-[#C5A065] text-white text-xs font-bold rounded-lg shadow-sm hover:bg-[#b08d55] transition">
+                                        Simpan Perubahan
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </form>
                 </div>
 
-                {/* BOX KANAN: BANNER IKLAN PROMOSI VERTIKAL */}
-                <div className="md:col-span-1 h-full">
-                    <div className="bg-white border border-gray-100 rounded-3xl p-6 flex flex-col justify-between h-full min-h-[410px] relative overflow-hidden shadow-sm"
-                         style={{ backgroundImage: `linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.75)), url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=400&q=80')`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                        <div className="space-y-2 z-10 pt-4">
-                            <h3 className="font-black text-xl text-gray-800 leading-tight">Jual Properti Lebih Mudah</h3>
-                            <p className="text-[11px] text-gray-400 leading-relaxed">Mulai jual properti dan kelola listing Anda sendiri dengan tools profesional kami.</p>
+                {/* CARD KANAN: BANNER JUAL PROPERTI (SUDAH JADI AGEN) */}
+                <div className="lg:col-span-1 h-full">
+                    <div className="relative rounded-2xl overflow-hidden shadow-sm border border-gray-100 bg-white p-4 h-full flex flex-col justify-between min-h-[340px]">
+                        {/* Background Mockup Image Effect */}
+                        <div className="absolute inset-0 bg-cover bg-center opacity-10 filter grayscale" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=500&q=80')` }}></div>
+                        
+                        <div className="relative z-10 p-2">
+                            <h3 className="font-bold text-xl text-gray-800 leading-snug mb-2">Jual Properti Lebih Mudah</h3>
+                            <p className="text-xs text-gray-500 leading-relaxed">Mulai jual properti dan kelola listing Anda sendiri dengan tools profesional kami.</p>
                         </div>
-                        <div className="z-10">
-                            <button className="w-full bg-[#D3A25D] text-white py-3 rounded-xl text-xs font-bold shadow-sm hover:bg-[#b88948] transition">
+                        
+                        <div className="relative z-10 p-2">
+                            {/* 🛠️ PERBAIKAN LOGIK: Diubah dari <a> menjadi <button> dengan handler onClick */}
+                            <button 
+                                onClick={handleJualPropertiClick} 
+                                className="block w-full bg-[#C5A065] text-white py-3 rounded-xl text-xs font-bold shadow-md hover:bg-[#b08d55] text-center transition"
+                            >
                                 Jual Properti
                             </button>
                         </div>
@@ -190,28 +241,26 @@ const SellerProfile = () => {
             </div>
 
             {/* SEKSYEN BAWAH: AKTIVITAS TERBARU */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center px-1">
+            <div className="space-y-3">
+                <div className="flex justify-between items-center">
                     <h3 className="font-bold text-sm text-gray-800">Aktivitas Terbaru</h3>
-                    <button className="text-[#D3A25D] text-xs font-medium hover:underline">Lihat Semua</button>
+                    <button className="text-[#C5A065] text-xs font-semibold hover:underline">Lihat Semua</button>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-2">
                     {activities.map((act) => (
-                        <div key={act.id} className="flex items-center justify-between p-4 bg-white rounded-2xl hover:bg-gray-50 transition border border-gray-100 shadow-sm cursor-pointer">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#FAF6EE]">
-                                    {act.type === 'view' && <Eye size={16} className="text-[#D3A25D]" />}
-                                    {act.type === 'favorite' && <Heart size={16} className="text-[#D3A25D]" />}
-                                    {act.type === 'contact' && <MessageSquare size={16} className="text-[#D3A25D]" />}
+                        <div key={act.id} className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-50 shadow-[0_1px_3px_rgba(0,0,0,0.02)] hover:shadow-md transition cursor-pointer">
+                            <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#FCFBF9] border border-[#F1ECE4] text-[#C5A065] shrink-0">
+                                    {act.type === 'view' && <span>👁️</span>}
+                                    {act.type === 'favorite' && <span>❤️</span>}
+                                    {act.type === 'contact' && <span>📞</span>}
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-gray-800">
-                                        {act.title.includes("Menteng") ? <>Melihat <span className="text-[#B38A4B]">Menteng Royal Villa</span></> : 
-                                         act.title.includes("Kemang") ? <>Menyimpan Favorit: <span className="text-[#B38A4B]">Kemang Residence</span></> : 
-                                         <>Menghubungi Agen <span className="text-[#B38A4B]">Budi Santoso</span></>}
+                                    <h4 className="text-xs font-medium text-gray-800">
+                                        {act.title}
                                     </h4>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">{act.desc}</p>
+                                    <p className="text-[11px] text-gray-400 mt-0.5">{act.desc}</p>
                                 </div>
                             </div>
                             <ChevronRight size={16} className="text-gray-300" />

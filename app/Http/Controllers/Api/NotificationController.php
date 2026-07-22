@@ -28,6 +28,14 @@ class NotificationController extends Controller
             }
         }
 
+        if ($excludedTypes = $request->get('exclude_type')) {
+            if (is_array($excludedTypes)) {
+                $query->whereNotIn('data->type', $excludedTypes);
+            } else {
+                $query->where('data->type', '!=', $excludedTypes);
+            }
+        }
+
         $notifications = $query->paginate($request->per_page ?? 15);
 
         return $this->success($notifications);

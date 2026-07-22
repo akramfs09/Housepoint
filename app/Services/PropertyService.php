@@ -5,7 +5,10 @@ namespace App\Services;
 use App\Models\Property;
 use App\Models\PropertyImage;
 use App\Models\AdminActionLog;
+use App\Models\City;
+use App\Models\Province;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -38,6 +41,9 @@ class PropertyService
             $validated['description'] = strip_tags($validated['description']);
             $validated['seller_id'] = $sellerId;
             $validated['slug'] = $this->generateUniqueSlug($validated['title']);
+            $validated = $this->syncLocationFields($validated);
+            $validated['gmaps_query'] = $this->googleMapsQueryFromUrl($validated['gmaps_url'] ?? null)
+                ?: $this->fallbackLocationQuery($validated);
 
             // Upload gambar utama
             if ($request->hasFile('image_main')) {
@@ -82,6 +88,9 @@ class PropertyService
         return DB::transaction(function () use ($request, $property) {
             $validated = $request->validated();
             $validated['description'] = strip_tags($validated['description']);
+            $validated = $this->syncLocationFields($validated, $property);
+            $validated['gmaps_query'] = $this->googleMapsQueryFromUrl($validated['gmaps_url'] ?? null)
+                ?: $this->fallbackLocationQuery($validated, $property);
 
             // Jika judul berubah, generate slug baru
             if (isset($validated['title']) && $validated['title'] !== $property->title) {
@@ -232,6 +241,78 @@ class PropertyService
         ]);
     }
 
+    private function syncLocationFields(array $data, ?Property $property = null): array
+    {
+        $province = null;
+        $city = null;
+
+        if (! empty($data['province_id'])) {
+            $province = Province::find($data['province_id']);
+        }
+
+        if (! $province) {
+            $provinceName = $data['province'] ?? $property?->province;
+            if ($provinceName) {
+                $province = Province::whereRaw('LOWER(nama) = ?', [mb_strtolower(trim($provinceName))])->first();
+            }
+        }
+
+        if (! empty($data['city_id'])) {
+            $city = City::find($data['city_id']);
+        }
+
+        if (! $city) {
+            $cityName = $data['city'] ?? $property?->city;
+            if ($cityName) {
+                $cityQuery = City::query()->whereRaw('LOWER(nama) = ?', [mb_strtolower(trim($cityName))]);
+
+                if ($province) {
+                    $cityQuery->where('province_id', $province->id);
+                }
+
+                $city = $cityQuery->first();
+
+                if (! $city) {
+                    $city = City::whereRaw('LOWER(nama) = ?', [mb_strtolower(trim($cityName))])->first();
+                }
+            }
+        }
+
+        if ($province) {
+            $data['province_id'] = $province->id;
+            $data['province'] = $province->nama;
+        }
+
+        if ($city) {
+            $data['city_id'] = $city->id;
+            $data['city'] = $city->nama;
+
+            if (! $province && $city->relationLoaded('province')) {
+                $province = $city->province;
+            } elseif (! $province) {
+                $province = $city->province()->first();
+            }
+        }
+
+        if ($province && ! isset($data['province'])) {
+            $data['province'] = $province->nama;
+        }
+
+        if ($province && ! isset($data['province_id'])) {
+            $data['province_id'] = $province->id;
+        }
+
+        if ($city && ! isset($data['city'])) {
+            $data['city'] = $city->nama;
+        }
+
+        if ($city && ! isset($data['city_id'])) {
+            $data['city_id'] = $city->id;
+        }
+
+        return $data;
+    }
+
     /**
      * Generate slug unik untuk properti.
      */
@@ -247,5 +328,94 @@ class PropertyService
         }
 
         return $slug;
+    }
+
+    private function fallbackLocationQuery(array $data, ?Property $property = null): string
+    {
+        return collect([
+            $data['address'] ?? $property?->address,
+            $data['city'] ?? $property?->city,
+            $data['province'] ?? $property?->province,
+        ])->filter()->implode(', ');
+    }
+
+    private function googleMapsQueryFromUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        $expandedUrl = $this->expandGoogleMapsUrl($url);
+        $decoded = urldecode($expandedUrl);
+
+        $patterns = [
+            '/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/',
+            '/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/',
+            '/[?&]q=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/',
+            '/[?&]query=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $decoded, $matches)) {
+                return "{$matches[1]},{$matches[2]}";
+            }
+        }
+
+        $query = parse_url($expandedUrl, PHP_URL_QUERY);
+        if ($query) {
+            parse_str($query, $params);
+            if (!empty($params['q'])) {
+                return $params['q'];
+            }
+            if (!empty($params['query'])) {
+                return $params['query'];
+            }
+        }
+
+        if (preg_match('#/place/([^/@?]+)#', $decoded, $matches)) {
+            return str_replace('+', ' ', $matches[1]);
+        }
+
+        return null;
+    }
+
+    private function expandGoogleMapsUrl(string $url): string
+    {
+        $host = parse_url($url, PHP_URL_HOST);
+
+        if (! in_array($host, ['maps.app.goo.gl', 'goo.gl'], true)) {
+            return $url;
+        }
+
+        try {
+            $currentUrl = $url;
+
+            for ($i = 0; $i < 5; $i++) {
+                $response = Http::withOptions(['allow_redirects' => false])
+                    ->timeout(5)
+                    ->get($currentUrl);
+
+                $location = $response->header('Location');
+                if (! $location) {
+                    break;
+                }
+
+                if (str_starts_with($location, '/')) {
+                    $scheme = parse_url($currentUrl, PHP_URL_SCHEME) ?: 'https';
+                    $currentHost = parse_url($currentUrl, PHP_URL_HOST);
+                    $location = "{$scheme}://{$currentHost}{$location}";
+                }
+
+                $currentUrl = $location;
+
+                if (! in_array(parse_url($currentUrl, PHP_URL_HOST), ['maps.app.goo.gl', 'goo.gl'], true)) {
+                    return $currentUrl;
+                }
+            }
+        } catch (\Throwable) {
+            return $url;
+        }
+
+        return $url;
     }
 }

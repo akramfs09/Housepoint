@@ -87,6 +87,10 @@ export const fetchMyProperties = (params = {}) => {
     return api.get('/seller/properties', { params });
 };
 
+export const fetchMyProperty = (id) => {
+    return api.get(`/seller/properties/${id}`);
+};
+
 // Dashboard statistik seller
 export const fetchSellerDashboard = (params = {}) => {
     return api.get('/seller/dashboard', { params });
@@ -137,6 +141,11 @@ export const publishFeaturedProperty = (propertyId) => {
     return api.patch(`/seller/properties/${propertyId}/featured/publish`);
 };
 
+// Batalkan pembayaran unggulan yang belum selesai
+export const cancelFeaturedPayment = (propertyId) => {
+    return api.patch(`/seller/properties/${propertyId}/featured/cancel`);
+};
+
 // ==========================================
 //  Pembayaran (Private - Seller)
 // ==========================================
@@ -153,6 +162,27 @@ export const initiatePayment = (propertyId) => {
 // Ambil daftar properti pending
 export const fetchPendingProperties = () => {
     return api.get('/admin/properties/pending');
+};
+
+// Ambil semua data properti untuk admin/super admin
+export const fetchAdminProperties = (params = {}) => {
+    return api.get('/admin/properties', { params });
+};
+
+export const fetchAdminUsersStats = () => {
+    return api.get('/admin/users/stats');
+};
+
+export const fetchAdminAdminsStats = () => {
+    return api.get('/admin/admins/stats');
+};
+
+export const fetchPaymentHistories = (params = {}) => {
+    return api.get('/admin/payment-histories', { params });
+};
+
+export const fetchPaymentHistoryDetail = (id) => {
+    return api.get(`/admin/payment-histories/${id}`);
 };
 
 // Setujui properti
@@ -182,6 +212,116 @@ export const fetchFeaturedProperties = () => {
 // Fetch detail properti publik berdasarkan slug
 export const fetchPublicPropertyDetail = (slug) => {
     return api.get(`/properties/${slug}`);
+};
+
+// ==========================================
+//  Konten Website
+// ==========================================
+
+export const fetchWebsiteContent = () => {
+    return api.get('/website-content');
+};
+
+export const fetchAdminWebsiteContent = () => {
+    return api.get('/admin/website-content');
+};
+
+export const fetchMidtransConfig = () => {
+    return api.get('/midtrans/config');
+};
+
+export const updateWebsiteContent = (formData) => {
+    return api.post('/admin/website-content', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+};
+
+// ==========================================
+//  Kontak: Laporan Pengguna & Ulasan Website
+// ==========================================
+
+export const submitUserReport = (payload) => {
+    return api.post('/contact/reports', payload);
+};
+
+export const fetchMyUserReports = () => {
+    return api.get('/contact/reports');
+};
+
+export const fetchUserReportMessages = (id) => {
+    return api.get(`/contact/reports/${id}/messages`);
+};
+
+export const sendUserReportMessage = (id, payload) => {
+    return api.post(`/contact/reports/${id}/messages`, payload);
+};
+
+export const fetchMyWebsiteReview = () => {
+    return api.get('/contact/review');
+};
+
+export const upsertWebsiteReview = (payload) => {
+    return api.post('/contact/review', payload);
+};
+
+export const deleteMyWebsiteReview = () => {
+    return api.delete('/contact/review');
+};
+
+export const fetchPublicWebsiteReviews = (params = {}) => {
+    return api.get('/reviews', { params });
+};
+
+export const fetchFeaturedWebsiteReviews = () => {
+    return api.get('/reviews/featured');
+};
+
+export const fetchAdminReports = (params = {}) => {
+    return api.get('/admin/reports', { params });
+};
+
+export const updateAdminReport = (id, payload) => {
+    return api.patch(`/admin/reports/${id}`, payload);
+};
+
+export const fetchAdminReportMessages = (id) => {
+    return api.get(`/admin/reports/${id}/messages`);
+};
+
+export const sendAdminReportMessage = (id, payload) => {
+    return api.post(`/admin/reports/${id}/messages`, payload);
+};
+
+export const fetchAdminWebsiteReviews = (params = {}) => {
+    return api.get('/admin/website-reviews', { params });
+};
+
+export const updateAdminWebsiteReview = (id, payload) => {
+    return api.patch(`/admin/website-reviews/${id}`, payload);
+};
+
+export const confirmKtpAccess = (payload) => {
+    return api.post('/admin/seller-verifications/ktp-access', payload);
+};
+
+// ==========================================
+//  Riwayat Pencarian (Customer & Customer/Seller)
+// ==========================================
+
+export const fetchSearchHistory = (params = {}) => {
+    return api.get('/search-history', { params });
+};
+
+export const storeSearchHistory = (payload) => {
+    return api.post('/search-history', payload);
+};
+
+export const deleteSearchHistory = (id) => {
+    return api.delete(`/search-history/${id}`);
+};
+
+export const clearSearchHistory = () => {
+    return api.delete('/search-history');
 };
 
 export default api;

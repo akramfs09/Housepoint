@@ -26,6 +26,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'role' => $role?->nama_role,
             'is_banned' => $this->is_banned,
+            'avatar_url' => $this->avatar_url,
             'created_at' => $this->created_at,
             // ⬇️ PERBAIKAN: tampilkan apply_count jika sellerProfile ADA, tanpa peduli role
             'apply_count' => $this->when(
@@ -36,11 +37,21 @@ class UserResource extends JsonResource
                 $this->relationLoaded('sellerProfile') && $this->sellerProfile !== null,
                 fn() => $this->sellerProfile->appeals()->where('status', 'pending')->exists()
             ),
+            'pending_appeal' => $this->when(
+                $this->relationLoaded('sellerProfile') && $this->sellerProfile?->relationLoaded('appeals'),
+                fn() => ($appeal = $this->sellerProfile->appeals->first()) ? [
+                    'id' => $appeal->id,
+                    'alasan' => $appeal->alasan,
+                    'created_at' => $appeal->created_at,
+                ] : null
+            ),
             'profile' => $profile ? [
                 'nama_lengkap' => $profile->nama_lengkap ?? null,
                 'no_hp' => $profile->no_hp ?? null,
                 'divisi' => $profile->divisi ?? null,
                 'jabatan' => $profile->jabatan ?? null,
+                'foto_profil' => $profile->foto_profil_url ?? null,
+                'foto_agen' => $profile->foto_agen_url ?? null,
             ] : null,
         ];
     }

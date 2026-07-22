@@ -75,7 +75,7 @@ class ChatController extends Controller
         }
 
         $conversations = $query
-            ->with(['participants.user:id,name,email', 'property:id,title,slug', 'latestMessage'])
+            ->with(['participants.user.customerProfile', 'participants.user.sellerProfile', 'property:id,title,slug', 'latestMessage'])
             ->orderByDesc(Message::select('created_at')->whereColumn('conversation_id', 'conversations.id')->latest()->take(1))
             ->get()
             ->map(function ($conv) use ($user) {
@@ -84,7 +84,12 @@ class ChatController extends Controller
                     ->where('user_id', '!=', $user->id)
                     ->whereNull('read_at')
                     ->count();
-                $conv->other_user = $other ? ['id' => $other->id, 'name' => $other->name, 'email' => $other->email] : null;
+                $conv->other_user = $other ? [
+                    'id' => $other->id,
+                    'name' => $other->name,
+                    'email' => $other->email,
+                    'avatar_url' => $other->avatar_url,
+                ] : null;
                 $conv->unread_count = $unreadCount;
                 $conv->is_archived = $conv->participants->firstWhere('user_id', $user->id)->archived_at !== null;
                 return $conv;
@@ -113,7 +118,7 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
         $messages = $conversation->messages()
-            ->with('user:id,name')
+            ->with(['user.customerProfile', 'user.sellerProfile'])
             ->orderBy('created_at')
             ->paginate(30);
 

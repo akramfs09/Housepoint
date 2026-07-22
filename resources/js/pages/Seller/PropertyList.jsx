@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fetchMyProperties, deleteProperty, submitProperty, createProperty, updateProperty } from '../../services/api';
+import { fetchMyProperties, fetchMyProperty, deleteProperty, submitProperty, createProperty, updateProperty } from '../../services/api';
 import PropertyCard from '../../components/common/PropertyCard';
 import ProvinceCitySelect from '../../components/common/ProvinceCitySelect';
 import DragDropUpload from '../../components/common/DragDropUpload';
@@ -37,9 +37,13 @@ const PropertyList = () => {
     const [activeTab, setActiveTab] = useState('list');
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [editLoading, setEditLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState('');
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState(null);
     const [counts, setCounts] = useState({ draft: 0, pending: 0 });
     const [featuredModal, setFeaturedModal] = useState(null);
+    const [editingProperty, setEditingProperty] = useState(null);
 
     // ========== FORM UPLOAD STATE ==========
     const [formLoading, setFormLoading] = useState(false);
@@ -50,8 +54,11 @@ const PropertyList = () => {
         type: 'rumah',
         status_jual: 'dijual',
         address: '',
+        gmaps_url: '',
         city: '',
         province: '',
+        city_id: '',
+        province_id: '',
         bedrooms: '',
         bathrooms: '',
         land_area: '',
@@ -74,9 +81,10 @@ const PropertyList = () => {
         setLoading(true);
         try {
             const params = statusFilter ? { status: statusFilter } : {};
-            const { data } = await fetchMyProperties(params);
-            const propertyData = data.data || [];
+            const { data } = await fetchMyProperties({ ...params, page, per_page: 10 });
+            const propertyData = data.data?.data || data.data || [];
             setProperties(propertyData);
+            setPagination({ currentPage: data.meta?.current_page || data.data?.current_page, lastPage: data.meta?.last_page || data.data?.last_page, total: data.meta?.total || data.data?.total });
 
             if (!statusFilter) {
                 setCounts({
@@ -93,16 +101,18 @@ const PropertyList = () => {
 
     useEffect(() => {
         if (activeTab === 'list') loadProperties();
-    }, [statusFilter, activeTab]);
+    }, [statusFilter, activeTab, page]);
 
     // ========== LOAD DATA UNTUK EDIT ==========
     useEffect(() => {
         if (!isEdit) return;
         const loadProperty = async () => {
+            setEditLoading(true);
             try {
-                const { data } = await fetchMyProperties();
-                const found = (data.data || []).find(p => p.id === parseInt(id));
+                const { data } = await fetchMyProperty(id);
+                const found = data.data || data;
                 if (found) {
+                    setEditingProperty(found);
                     setForm({
                         title: found.title || '',
                         description: found.description || '',
@@ -110,8 +120,11 @@ const PropertyList = () => {
                         type: found.type || 'rumah',
                         status_jual: found.status_jual || 'dijual',
                         address: found.address || '',
+                        gmaps_url: found.gmaps_url || '',
                         city: found.city || '',
                         province: found.province || '',
+                        city_id: found.city_id || '',
+                        province_id: found.province_id || '',
                         bedrooms: found.bedrooms || '',
                         bathrooms: found.bathrooms || '',
                         land_area: found.land_area || '',
@@ -129,10 +142,12 @@ const PropertyList = () => {
             } catch (error) {
                 toast.error('Gagal memuat data properti.');
                 navigate('/seller/properties');
+            } finally {
+                setEditLoading(false);
             }
         };
         loadProperty();
-    }, [id]);
+    }, [id, isEdit, navigate]);
 
     // ========== PROPERTY ACTIONS ==========
     const handleAction = async (action, propertyId) => {
@@ -186,6 +201,8 @@ const PropertyList = () => {
         setForm({
             title: '', description: '', price: '', type: 'rumah',
             status_jual: 'dijual', address: '', city: '', province: '',
+            city_id: '', province_id: '',
+            gmaps_url: '',
             bedrooms: '', bathrooms: '', land_area: '', building_area: '',
             tahun_dibangun: '', garasi: '', jumlah_lantai: '', sumber_air: '',
             fasilitas: [], video_type: '', youtube_url: '',
@@ -206,6 +223,8 @@ const PropertyList = () => {
                 if (form.fasilitas.length > 0) {
                     form.fasilitas.forEach((f, i) => formData.append(`fasilitas[${i}]`, f));
                 }
+            } else if (key === 'gmaps_url') {
+                formData.append(key, form[key] || '');
             } else if (form[key] !== '' && form[key] !== null) {
                 formData.append(key, form[key]);
             }
@@ -244,11 +263,7 @@ const PropertyList = () => {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
-                        {isEdit ? 'Edit Properti' : 'Kelola Properti'}
-                    </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Atur, pantau, dan publikasikan listing properti Anda dengan mudah.
                     </p>
                 </div>
                 {isEdit && (
@@ -265,17 +280,23 @@ const PropertyList = () => {
             {!isEdit && (
                 <div className="flex border border-gray-200 mb-8 bg-white p-1 rounded-xl shadow-sm max-w-md">
                     <button 
-                        onClick={() => setActiveTab('list')}
+                        onClick={() => {
+                            setActiveTab('list');
+                            setPage(1);
+                        }}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
                             activeTab === 'list' 
                                 ? 'bg-[#d49b37] text-white shadow-sm' 
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                         }`}
                     >
-                        📋 Daftar Properti
+                        Daftar Properti
                     </button>
                     <button 
-                        onClick={() => setActiveTab('upload')} 
+                        onClick={() => {
+                            setActiveTab('upload');
+                            setPage(1);
+                        }} 
                         disabled={counts.draft >= 3}
                         title={counts.draft >= 3 ? 'Batas draft maksimal 3 tercapai' : ''}
                         className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 ${
@@ -284,7 +305,7 @@ const PropertyList = () => {
                                 : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                         } disabled:opacity-40 disabled:cursor-not-allowed`}
                     >
-                        ➕ Upload Properti
+                        Upload Properti
                     </button>
                 </div>
             )}
@@ -313,7 +334,10 @@ const PropertyList = () => {
                         {STATUS_TABS.map(tab => (
                             <button 
                                 key={tab.key} 
-                                onClick={() => setStatusFilter(tab.key)}
+                                onClick={() => {
+                                    setStatusFilter(tab.key);
+                                    setPage(1);
+                                }}
                                 className={`px-4 py-2 rounded-full text-xs font-semibold tracking-wide transition duration-200 ${
                                     statusFilter === tab.key 
                                         ? 'bg-[#1e293b] text-white shadow-sm' 
@@ -348,18 +372,61 @@ const PropertyList = () => {
                             ))}
                         </div>
                     )}
+                    
+                    {!loading && properties.length > 0 && pagination && pagination.total > 0 && (
+                        <div className="text-center text-sm text-gray-500 mt-8">
+                            Menampilkan {properties.length} dari {pagination.total} properti
+                        </div>
+                    )}
+                    {!loading && pagination && pagination.lastPage > 1 && (
+                        <div className="flex items-center justify-center gap-1.5 mt-4 mb-8">
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-3 py-1.5 rounded-lg text-sm border border-[#e5d8c0] bg-white text-[#5a554c] disabled:opacity-40 hover:bg-amber-50"
+                            >
+                                &laquo; Sebelumnya
+                            </button>
+                            {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map(p => (
+                                <button
+                                    key={p}
+                                    onClick={() => setPage(p)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                        p === page
+                                            ? 'bg-[#d49b37] text-white'
+                                            : 'border border-[#e5d8c0] bg-white text-[#5a554c] hover:bg-amber-50'
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setPage(p => Math.min(pagination.lastPage, p + 1))}
+                                disabled={page === pagination.lastPage}
+                                className="px-3 py-1.5 rounded-lg text-sm border border-[#e5d8c0] bg-white text-[#5a554c] disabled:opacity-40 hover:bg-amber-50"
+                            >
+                                Selanjutnya &raquo;
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
 
             {/* ========== TAB: UPLOAD / EDIT PROPERTI ========== */}
-            {(activeTab === 'upload' || isEdit) && (
+            {isEdit && editLoading ? (
+                <div className="max-w-4xl bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="flex flex-col items-center justify-center py-24 text-gray-500">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d49b37] mb-3"></div>
+                        <span className="text-sm font-medium tracking-wide">Memuat data properti untuk diedit...</span>
+                    </div>
+                </div>
+            ) : (activeTab === 'upload' || isEdit) && (
                 <div className="max-w-4xl bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-4">
                         <h2 className="font-bold text-gray-800 text-base">Formulir Isian Data Aset Properti</h2>
                     </div>
                     
                     <form onSubmit={handleSubmit} className="p-6 space-y-8">
-                        
                         {/* SECTION 1: Informasi Dasar */}
                         <div className="space-y-5">
                             <h3 className="text-sm font-bold text-gray-900 tracking-wider uppercase border-l-4 border-[#d49b37] pl-3">1. Informasi Dasar Properti</h3>
@@ -431,15 +498,34 @@ const PropertyList = () => {
                             <div className="space-y-4">
                                 <ProvinceCitySelect
                                     province={form.province}
+                                    provinceId={form.province_id}
                                     city={form.city}
-                                    onProvinceChange={(val) => { setForm({ ...form, province: val, city: '' }); setErrors({ ...errors, province: null }); }}
-                                    onCityChange={(val) => { setForm({ ...form, city: val }); setErrors({ ...errors, city: null }); }}
+                                    cityId={form.city_id}
+                                    onProvinceChange={(val) => { setForm((current) => ({ ...current, province: val, city: '', province_id: '', city_id: '' })); setErrors((current) => ({ ...current, province: null, city: null })); }}
+                                    onProvinceSelect={(selectedProvinceId) => { setForm((current) => ({ ...current, province_id: selectedProvinceId || '' })); }}
+                                    onCityChange={(val) => { setForm((current) => ({ ...current, city: val, city_id: '' })); setErrors((current) => ({ ...current, city: null })); }}
+                                    onCitySelect={(selectedCityId) => { setForm((current) => ({ ...current, city_id: selectedCityId || '' })); }}
                                     errors={errors}
                                 />
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Alamat Lengkap Properti <span className="text-red-500">*</span></label>
                                     <textarea name="address" value={form.address} onChange={handleFormChange}
                                         className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d49b37]/20 focus:border-[#d49b37] transition" rows={2} placeholder="Nama jalan, nomor rumah, RT/RW, cluster..." required maxLength={500} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Link Google Maps Lokasi Properti</label>
+                                    <input
+                                        type="url"
+                                        name="gmaps_url"
+                                        value={form.gmaps_url}
+                                        onChange={handleFormChange}
+                                        placeholder="https://maps.app.goo.gl/..."
+                                        className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d49b37]/20 focus:border-[#d49b37] transition"
+                                    />
+                                    <p className="mt-1 text-xs font-medium text-gray-400">
+                                        Buka lokasi di Google Maps, klik Bagikan, lalu tempel link di sini agar peta detail properti lebih akurat.
+                                    </p>
+                                    {errors.gmaps_url && <p className="text-red-500 text-xs mt-1">{errors.gmaps_url[0]}</p>}
                                 </div>
                             </div>
                         </div>
@@ -509,13 +595,30 @@ const PropertyList = () => {
                         {/* SECTION 5: Upload Foto */}
                         <div className="space-y-5">
                             <h3 className="text-sm font-bold text-gray-900 tracking-wider uppercase border-l-4 border-[#d49b37] pl-3">5. Unggah Berkas Foto</h3>
-                            <DragDropUpload images={images} setImages={setImages} errors={errors} />
+                            <DragDropUpload
+                                images={images}
+                                setImages={setImages}
+                                errors={errors}
+                                initialImages={isEdit ? editingProperty?.images || [] : []}
+                            />
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 max-w-md">
                                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Gambar Utama Cover</label>
+                                {isEdit && editingProperty?.image_main && (
+                                    <div className="mb-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm">
+                                        <img
+                                            src={editingProperty.image_main}
+                                            alt={editingProperty.title || 'Cover properti'}
+                                            className="h-40 w-full object-cover"
+                                        />
+                                    </div>
+                                )}
                                 <input type="file" accept="image/jpeg,image/png,image/webp"
                                     onChange={(e) => setImageMain(e.target.files[0])}
                                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#d49b37]/10 file:text-[#d49b37] hover:file:bg-[#d49b37]/20" />
                                 {errors.image_main && <p className="text-red-500 text-xs mt-1">{errors.image_main[0]}</p>}
+                                {isEdit && editingProperty?.image_main && !imageMain && (
+                                    <p className="mt-2 text-xs text-gray-500">Cover saat ini tetap tersimpan jika kamu tidak mengunggah file baru.</p>
+                                )}
                             </div>
                         </div>
 
@@ -539,6 +642,20 @@ const PropertyList = () => {
                                 </div>
                                 {form.video_type === 'upload' && (
                                     <div className="max-w-md bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                        {isEdit && editingProperty?.video_type === 'upload' && editingProperty?.video_path && (
+                                            <div className="mb-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm">
+                                                <video
+                                                    src={editingProperty.video_path}
+                                                    className="h-44 w-full bg-black object-cover"
+                                                    controls
+                                                    playsInline
+                                                    preload="metadata"
+                                                />
+                                                <div className="px-3 py-2 text-xs text-gray-500">
+                                                    Video ini tetap tersimpan jika tidak diunggah ulang.
+                                                </div>
+                                            </div>
+                                        )}
                                         <input type="file" accept="video/mp4"
                                             onChange={(e) => setVideoFile(e.target.files[0])}
                                             className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#d49b37]/10 file:text-[#d49b37] hover:file:bg-[#d49b37]/20" />
@@ -547,6 +664,28 @@ const PropertyList = () => {
                                 )}
                                 {form.video_type === 'youtube' && (
                                     <div className="max-w-xl">
+                                        {isEdit && editingProperty?.video_type === 'youtube' && editingProperty?.youtube_url && (
+                                            <div className="mb-3 overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm">
+                                                <iframe
+                                                    src={`https://www.youtube.com/embed/${(() => {
+                                                        try {
+                                                            const url = new URL(editingProperty.youtube_url);
+                                                            return url.searchParams.get('v') || url.pathname.split('/').filter(Boolean).pop();
+                                                        } catch {
+                                                            const match = editingProperty.youtube_url.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:\?|&|$)/);
+                                                            return match?.[1] || '';
+                                                        }
+                                                    })()}?rel=0&modestbranding=1`}
+                                                    title={editingProperty.title || 'Video properti'}
+                                                    className="h-44 w-full"
+                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                    allowFullScreen
+                                                />
+                                                <div className="px-3 py-2 text-xs text-gray-500">
+                                                    Tautan YouTube saat ini sudah terisi dan bisa diganti kapan saja.
+                                                </div>
+                                            </div>
+                                        )}
                                         <input type="url" name="youtube_url" value={form.youtube_url} onChange={handleFormChange}
                                             placeholder="https://youtube.com/watch?v=..." className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d49b37]/20 focus:border-[#d49b37] transition" />
                                     </div>

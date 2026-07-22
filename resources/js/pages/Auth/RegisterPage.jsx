@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useWebsiteContent } from '../../hooks/useWebsiteContent';
 
 const RegisterPage = () => {
     const [formData, setFormData] = useState({
@@ -15,7 +16,9 @@ const RegisterPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const { register } = useAuth();
+    const { content } = useWebsiteContent();
     const navigate = useNavigate();
+    const authLogo = content.branding?.auth_logo_url || content.branding?.header_logo_url || '/logo.png';
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -66,7 +69,7 @@ const RegisterPage = () => {
             {/* 2. LOGO UTAMA (Sama Persis dengan Login) */}
             <div className="w-full h-[95px] px-6 lg:px-[100px] flex items-center z-30 relative">
                 <img
-                    src="/logo.png"
+                    src={authLogo}
                     alt="HousePoint"
                     className="h-10 lg:h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 cursor-pointer"
                 />

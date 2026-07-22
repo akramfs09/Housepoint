@@ -15,6 +15,7 @@ class AdminResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role?->nama_role,
             'is_banned' => $this->is_banned,
+            'avatar_url' => $this->avatar_url,
             'profile' => $this->whenLoaded('adminProfile', function () {
                 return [
                     'nama_lengkap' => $this->adminProfile->nama_lengkap ?? null,

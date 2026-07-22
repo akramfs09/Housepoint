@@ -25,4 +25,21 @@ const echo = new Echo({
     },
 });
 
+export const refreshEchoAuthToken = () => {
+    const token = localStorage.getItem('token') || '';
+    const authorization = token ? `Bearer ${token}` : '';
+
+    if (echo.options?.auth?.headers) {
+        echo.options.auth.headers.Authorization = authorization;
+    }
+
+    if (echo.connector?.options?.auth?.headers) {
+        echo.connector.options.auth.headers.Authorization = authorization;
+    }
+
+    if (echo.connector?.pusher?.config?.auth?.headers) {
+        echo.connector.pusher.config.auth.headers.Authorization = authorization;
+    }
+};
+
 export default echo;

@@ -1,24 +1,66 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Bell } from 'lucide-react';
 import api from '../../services/api';
+
+const normalizeNotification = (notification) => {
+    if (notification?.data) {
+        return notification;
+    }
+
+    return {
+        id: notification?.id || `broadcast-${Date.now()}`,
+        data: {
+            ...notification,
+            type: notification?.type?.includes('\\') ? 'system_update' : notification?.type,
+        },
+        read_at: null,
+        created_at: notification?.created_at || new Date().toISOString(),
+    };
+};
+
+const notificationText = (notification) => {
+    const data = notification.data || {};
+
+    switch (data.type) {
+        case 'chat_message':
+            return <p><strong>{data.sender_name}</strong>: {data.body}</p>;
+        case 'seller_verification':
+            return <p>Pengajuan seller <strong>{data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>;
+        case 'property_moderation':
+            return <p>Properti <strong>{data.title}</strong> <strong>{data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>;
+        case 'appeal':
+            return <p>Banding <strong>{data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>;
+        case 'payment_success':
+            return <p>Pembayaran berhasil untuk <strong>{data.title}</strong>.</p>;
+        case 'new_seller_application':
+            return <p>Pengajuan seller baru dari <strong>{data.seller_name}</strong></p>;
+        case 'new_property_submission':
+            return <p>Properti <strong>{data.title}</strong> diajukan</p>;
+        case 'new_appeal':
+            return <p>Banding baru dari <strong>{data.seller_name}</strong></p>;
+        default:
+            return <p>{data.body || data.title || 'Anda memiliki notifikasi baru.'}</p>;
+    }
+};
 
 const NotificationBell = () => {
     const [unreadCount, setUnreadCount] = useState(0);
     const [open, setOpen] = useState(false);
     const [notifications, setNotifications] = useState([]);
 
-    // Ambil jumlah unread & 5 notifikasi terbaru
     const fetchUnreadCount = useCallback(async () => {
         try {
             const { data } = await api.get('/notifications/unread-count');
             setUnreadCount(data.count ?? 0);
+            window.dispatchEvent(new CustomEvent('notifications-updated', { detail: { count: data.count ?? 0 } }));
         } catch {}
     }, []);
 
     const fetchLatest = useCallback(async () => {
         try {
-            const { data } = await api.get('/notifications?per_page=5');
-            const list = data?.data?.data || data?.data || [];
+            const { data } = await api.get('/notifications', { params: { per_page: 5 } });
+            const list = data?.data?.data || [];
             setNotifications(Array.isArray(list) ? list : []);
         } catch {}
     }, []);
@@ -27,16 +69,15 @@ const NotificationBell = () => {
         fetchUnreadCount();
         fetchLatest();
 
-        // Tangani event real‑time dari App.jsx
-        const handleNewNotification = (e) => {
-            const newNotif = e.detail;
-            // Tambahkan notif baru ke urutan pertama, jaga maksimal 5
-            setNotifications(prev => {
-                const updated = [newNotif, ...prev];
-                if (updated.length > 5) updated.pop();
-                return updated;
+        const handleNewNotification = (event) => {
+            const newNotification = normalizeNotification(event.detail);
+
+            setNotifications((current) => {
+                const withoutDuplicate = current.filter((item) => item.id !== newNotification.id);
+                return [newNotification, ...withoutDuplicate].slice(0, 5);
             });
-            setUnreadCount(prev => prev + 1);
+            setUnreadCount((current) => current + 1);
+            window.dispatchEvent(new CustomEvent('notifications-updated'));
         };
 
         window.addEventListener('new-notification', handleNewNotification);
@@ -44,83 +85,65 @@ const NotificationBell = () => {
     }, [fetchUnreadCount, fetchLatest]);
 
     const handleToggle = () => {
-        setOpen(prev => !prev);
-        // Refresh daftar setiap kali dropdown dibuka
-        if (!open) fetchLatest();
+        setOpen((current) => !current);
+        if (!open) {
+            fetchLatest();
+            fetchUnreadCount();
+        }
     };
 
     const handleMarkAllRead = async () => {
         try {
             await api.patch('/notifications/read-all');
             setUnreadCount(0);
-            setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
+            setNotifications((current) => current.map((item) => ({ ...item, read_at: item.read_at || new Date().toISOString() })));
+            window.dispatchEvent(new CustomEvent('notifications-updated', { detail: { count: 0 } }));
         } catch {}
     };
 
     return (
         <div className="relative">
             <button
+                type="button"
                 onClick={handleToggle}
-                className="relative p-2 text-2xl hover:bg-white/10 rounded-full transition"
+                className="relative flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-[#5a5243] transition hover:bg-[#c49a4a]/10 hover:text-[#c49a4a]"
             >
-                🔔
+                <Bell className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                 {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    <span className="absolute -right-0.5 -top-0.5 sm:-right-1 sm:-top-1 flex h-4 min-w-4 sm:h-5 sm:min-w-5 items-center justify-center rounded-full bg-red-500 px-0.5 sm:px-1 text-[8px] sm:text-[10px] font-bold text-white shadow-sm">
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
             </button>
 
             {open && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border z-50 max-h-96 overflow-y-auto">
-                    <div className="p-3 border-b flex justify-between items-center">
-                        <span className="font-semibold text-sm">Notifikasi</span>
+                <div className="fixed inset-x-4 top-[88px] sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:w-80 sm:mt-2 z-50 max-h-[70vh] overflow-y-auto rounded-xl border bg-white shadow-lg">
+                    <div className="flex items-center justify-between border-b p-3">
+                        <span className="text-sm font-semibold">Notifikasi</span>
                         {unreadCount > 0 && (
-                            <button onClick={handleMarkAllRead} className="text-xs text-blue-600 hover:underline">
+                            <button type="button" onClick={handleMarkAllRead} className="text-xs font-medium text-[#c49a4a] hover:underline">
                                 Tandai semua dibaca
                             </button>
                         )}
                     </div>
+
                     {notifications.length === 0 ? (
-                        <p className="p-4 text-gray-500 text-sm">Tidak ada notifikasi</p>
+                        <p className="p-4 text-sm text-gray-500">Tidak ada notifikasi</p>
                     ) : (
-                        notifications.map(n => (
-                            <div key={n.id} className={`p-3 hover:bg-gray-50 border-b last:border-0 text-sm ${!n.read_at ? 'bg-[#faf7f0]' : ''}`}>
-                                {/* Render sesuai tipe */}
-                                {n.data?.type === 'chat_message' && (
-                                    <p><strong>{n.data.sender_name}</strong>: {n.data.body?.substring(0, 50)}</p>
-                                )}
-                                {n.data?.type === 'seller_verification' && (
-                                    <p>Pengajuan seller <strong>{n.data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>
-                                )}
-                                {n.data?.type === 'property_moderation' && (
-                                    <p>Properti <strong>{n.data.title}</strong> <strong>{n.data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>
-                                )}
-                                {n.data?.type === 'appeal' && (
-                                    <p>Banding <strong>{n.data.status === 'approved' ? 'disetujui' : 'ditolak'}</strong></p>
-                                )}
-                                {n.data?.type === 'payment_success' && (
-                                    <p>Pembayaran berhasil! Properti <strong>{n.data.title}</strong> telah dipublikasikan.</p>
-                                )}
-                                {n.data?.type === 'new_seller_application' && (
-                                    <p>Pengajuan seller baru dari <strong>{n.data.seller_name}</strong></p>
-                                )}
-                                {n.data?.type === 'new_property_submission' && (
-                                    <p>Properti <strong>{n.data.title}</strong> diajukan</p>
-                                )}
-                                {n.data?.type === 'new_appeal' && (
-                                    <p>Banding baru dari <strong>{n.data.seller_name}</strong></p>
-                                )}
-                                <span className="text-xs text-gray-400 block mt-1">
-                                    {new Date(n.created_at).toLocaleString('id-ID')}
+                        notifications.map((notification) => (
+                            <div key={notification.id} className={`border-b p-3 text-sm last:border-0 hover:bg-gray-50 ${!notification.read_at ? 'bg-[#faf7f0]' : ''}`}>
+                                {notificationText(notification)}
+                                <span className="mt-1 block text-xs text-gray-400">
+                                    {new Date(notification.created_at || Date.now()).toLocaleString('id-ID')}
                                 </span>
                             </div>
                         ))
                     )}
+
                     <Link
                         to="/notifications"
                         onClick={() => setOpen(false)}
-                        className="block text-center p-2 text-blue-600 text-sm hover:bg-gray-50 border-t"
+                        className="block border-t p-2 text-center text-sm font-medium text-[#c49a4a] hover:bg-gray-50"
                     >
                         Lihat semua
                     </Link>

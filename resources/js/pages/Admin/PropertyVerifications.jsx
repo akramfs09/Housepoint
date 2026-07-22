@@ -55,6 +55,8 @@ const VideoEmbed = ({ url }) => {
 const PropertyVerifications = () => {
     const [properties, setProperties] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [pagination, setPagination] = useState(null);
     const [selectedProperty, setSelectedProperty] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [alasan, setAlasan] = useState('');
@@ -63,8 +65,9 @@ const PropertyVerifications = () => {
     const fetchProperties = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/admin/properties/pending');
-            setProperties(data.data || data);
+            const { data } = await api.get('/admin/properties/pending', { params: { page, per_page: 10 } });
+            setProperties(data.data?.data || data.data || data);
+            setPagination({ currentPage: data.meta?.current_page || data.data?.current_page, lastPage: data.meta?.last_page || data.data?.last_page, total: data.meta?.total || data.data?.total });
         } catch (err) {
             toast.error('Gagal memuat properti pending');
         } finally {
@@ -74,7 +77,7 @@ const PropertyVerifications = () => {
 
     useEffect(() => {
         fetchProperties();
-    }, []);
+    }, [page]);
 
     const openOverview = (property) => {
         setSelectedProperty(property);
@@ -129,7 +132,6 @@ const PropertyVerifications = () => {
 
     return (
         <div className="p-6">
-            <h1 className="text-2xl font-bold mb-6">Verifikasi Properti (Pending)</h1>
 
             {properties.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border">
@@ -166,7 +168,7 @@ const PropertyVerifications = () => {
                                     </td>
                                     <td className="p-4 text-xs text-gray-600">
                                         {p.seller?.name || 'N/A'}<br />
-                                        {p.seller?.sellerProfile?.nama_toko && `🏪 ${p.seller.sellerProfile.nama_toko}`}
+                                        {p.seller?.sellerProfile?.nama_agen && `👤 ${p.seller.sellerProfile.nama_agen}`}
                                     </td>
                                     <td className="p-4 text-center font-medium">{formatPrice(p.price)}</td>
                                     <td className="p-4 text-center capitalize">{p.type}</td>
@@ -189,6 +191,43 @@ const PropertyVerifications = () => {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {pagination && pagination.total > 0 && (
+                <div className="text-center text-sm text-gray-500 mt-4">
+                    Menampilkan {properties.length} dari {pagination.total} properti
+                </div>
+            )}
+            {pagination && pagination.lastPage > 1 && (
+                <div className="flex items-center justify-center gap-1.5 mt-4">
+                    <button
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-3 py-1.5 rounded-lg text-sm border border-[#e5d8c0] bg-white text-[#5a554c] disabled:opacity-40 hover:bg-amber-50"
+                    >
+                        &laquo; Sebelumnya
+                    </button>
+                    {Array.from({ length: pagination.lastPage }, (_, i) => i + 1).map(p => (
+                        <button
+                            key={p}
+                            onClick={() => setPage(p)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${
+                                p === page
+                                    ? 'bg-[#C5A065] text-white'
+                                    : 'border border-[#e5d8c0] bg-white text-[#5a554c] hover:bg-amber-50'
+                            }`}
+                        >
+                            {p}
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setPage(p => Math.min(pagination.lastPage, p + 1))}
+                        disabled={page === pagination.lastPage}
+                        className="px-3 py-1.5 rounded-lg text-sm border border-[#e5d8c0] bg-white text-[#5a554c] disabled:opacity-40 hover:bg-amber-50"
+                    >
+                        Selanjutnya &raquo;
+                    </button>
                 </div>
             )}
 
@@ -293,7 +332,7 @@ const PropertyVerifications = () => {
                                 <div className="text-sm space-y-1">
                                     <p><span className="text-gray-500">Nama:</span> <span className="font-medium">{selectedProperty.seller?.name || '-'}</span></p>
                                     <p><span className="text-gray-500">Email:</span> <span className="font-medium">{selectedProperty.seller?.email || '-'}</span></p>
-                                    <p><span className="text-gray-500">Toko:</span> <span className="font-medium">{selectedProperty.seller?.sellerProfile?.nama_toko || '-'}</span></p>
+                                    <p><span className="text-gray-500">Agen:</span> <span className="font-medium">{selectedProperty.seller?.sellerProfile?.nama_agen || '-'}</span></p>
                                     <p><span className="text-gray-500">No. HP:</span> <span className="font-medium">{selectedProperty.seller?.sellerProfile?.no_hp || '-'}</span></p>
                                 </div>
                             </div>

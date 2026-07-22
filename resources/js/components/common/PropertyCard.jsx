@@ -10,6 +10,8 @@ import {
     Maximize2, 
     BedDouble, 
     Bath, 
+    Heart,
+    MapPin,
     Eye, 
     Pencil, 
     UploadCloud, 
@@ -59,8 +61,9 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
     }, [property.is_favorited]);
 
     const formatPrice = (price) => {
-        if (typeof price === 'number') {
-            return `Rp ${price.toLocaleString('id-ID')}`;
+        const numericPrice = Number(price);
+        if (!Number.isNaN(numericPrice)) {
+            return `Rp ${numericPrice.toLocaleString('id-ID', { maximumFractionDigits: 0 })}`;
         }
         return price;
     };
@@ -132,6 +135,60 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
             setFavLoading(false);
         }
     };
+
+    if (isPublic) {
+        return (
+            <article className="group overflow-hidden rounded-xl border border-[#e8d3a6] bg-white shadow-[0_8px_18px_rgba(86,63,24,0.035)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_14px_30px_rgba(86,63,24,0.11)]">
+                <div className="relative h-[184px] overflow-hidden">
+                    <LinkedContent className="block h-full">
+                        <img
+                            src={imageUrl}
+                            alt={property.title}
+                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                            loading="lazy"
+                        />
+                    </LinkedContent>
+
+                    <div className="absolute left-3 top-3 rounded-md bg-[#d9a441] px-3 py-1.5 text-[10px] font-bold tracking-wide leading-none text-white shadow-sm uppercase">
+                        RENT
+                    </div>
+
+                    {property.status === 'published' && canUseFavorite && (
+                        <button
+                            type="button"
+                            onClick={handleFavoriteClick}
+                            disabled={favLoading}
+                            className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#d85f6a] shadow-sm ring-1 ring-[#ecd7bf] transition hover:scale-105 ${
+                                favLoading ? 'cursor-wait opacity-60' : ''
+                            }`}
+                            title={isFavorited ? 'Hapus dari favorit' : 'Simpan ke favorit'}
+                        >
+                            <Heart className="h-4 w-4" fill={isFavorited ? 'currentColor' : 'none'} strokeWidth={1.8} />
+                        </button>
+                    )}
+                </div>
+
+                <div className="min-h-[146px] px-4 pb-4 pt-5 text-center">
+                    <p className="text-[12px] font-semibold leading-none text-[#c49a4a]">
+                        {formatPrice(property.price)}
+                    </p>
+
+                    <LinkedContent>
+                        <h3 className="mt-4 line-clamp-2 min-h-[34px] text-[14px] font-semibold leading-[1.25] text-[#2f2a22] transition hover:text-[#c49a4a]">
+                            {property.title}
+                        </h3>
+                    </LinkedContent>
+
+                    <p className="mt-3 flex items-center justify-center gap-1 text-[9px] font-medium text-[#8b8478]">
+                        <MapPin className="h-3 w-3 text-[#a79b89]" />
+                        <span className="truncate">
+                            {[property.city || property.location, property.province].filter(Boolean).join(', ')}
+                        </span>
+                    </p>
+                </div>
+            </article>
+        );
+    }
 
     return (
         <div className="bg-[#f8f4ec] rounded-[22px] overflow-hidden shadow-lg border border-[#e6dac7]">

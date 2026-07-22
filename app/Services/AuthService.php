@@ -175,8 +175,9 @@ class AuthService
 
     public function resendOtp(array $data): void
     {
+        $purpose = $data['purpose'] ?? 'register';
         $existing = Otp::where('email', $data['email'])
-            ->where('purpose', 'register')
+            ->where('purpose', $purpose)
             ->first();
 
         if ($existing && $existing->created_at && now()->diffInSeconds($existing->created_at) < 60) {
@@ -184,15 +185,21 @@ class AuthService
         }
 
         $otpCode = random_int(100000, 999999);
+        $registerData = $existing?->register_data;
 
-        Otp::where('email', $data['email'])->where('purpose', 'register')->delete();
+        if ($purpose === 'register' && !$registerData) {
+            throw new \Exception('Sesi registrasi tidak ditemukan. Silakan daftar ulang.');
+        }
+
+        Otp::where('email', $data['email'])->where('purpose', $purpose)->delete();
 
         Otp::create([
             'email' => $data['email'],
             'token' => Hash::make($otpCode),
-            'purpose' => 'register',
+            'purpose' => $purpose,
             'expires_at' => now()->addMinutes(10),
             'attempts' => 0,
+            'register_data' => $purpose === 'register' ? $registerData : null,
             'created_at' => now(),
         ]);
 

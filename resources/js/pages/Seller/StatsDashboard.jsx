@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { fetchSellerDashboard } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import {
@@ -160,12 +160,12 @@ const StatsDashboard = () => {
             {/* --- TOP HEADER SELECTION --- */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#2A2621] tracking-tight">Statistik Properti</h1>
-                    <p className="text-sm text-[#9C9487] mt-0.5">Pantau performa properti Anda</p>
+                    <h1 className="text-2xl font-bold text-[#2A2621] tracking-tight"></h1>
+                    <p className="text-sm text-[#9C9487] mt-0.5"></p>
                 </div>
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                     <div className="relative bg-white rounded-xl border border-[#EBE3D5] px-4 py-2 flex items-center gap-2 shadow-sm cursor-pointer">
-                        <span className="text-[#9C9487] text-xs font-medium">📅 Bulan Ini</span>
+                        <span className="text-[#9C9487] text-xs font-medium">Bulan Ini</span>
                         <input
                             type="month"
                             value={selectedMonth}
@@ -173,9 +173,7 @@ const StatsDashboard = () => {
                             className="text-xs font-bold text-[#2A2621] bg-transparent focus:outline-none cursor-pointer"
                         />
                     </div>
-                    <button className="bg-[#D4A44C] hover:bg-[#C2933B] text-white px-5 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition-colors ml-auto sm:ml-0">
-                        Export PDF
-                    </button>
+        
                 </div>
             </div>
 
@@ -196,7 +194,7 @@ const StatsDashboard = () => {
                     </div>
                     <div className="flex items-center gap-1.5 cursor-pointer text-[#8A6E3D] hover:text-[#735B32] transition-colors">
                         <span className="text-[14px] font-semibold">Last 30 Days</span>
-                        <span className="text-[10px] pt-0.5">▼</span>
+                        <span className="text-[10px] pt-0.5">â–¼</span>
                     </div>
                 </div>
                 
@@ -284,7 +282,7 @@ const StatsDashboard = () => {
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                             <h2 className="text-base font-bold text-[#2A2621]">Performa Listing</h2>
                             <div className="relative w-full sm:w-60">
-                                <span className="absolute left-3 top-2.5 text-gray-400 text-xs">🔍</span>
+                                <span className="absolute left-3 top-2.5 text-gray-400 text-xs">ðŸ”</span>
                                 <input
                                     type="text"
                                     placeholder="Cari listing..."
@@ -307,16 +305,12 @@ const StatsDashboard = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="text-xs font-medium text-[#4A433A] divide-y divide-[#FAF6F0]">
-                                    {(filteredProperties.length > 0 ? filteredProperties : [
-                                        { id: 1, title: 'The Glass Pavilion', city: 'Kuningan, Jakarta', views_count: '4,209', favorites_count: '321', status: 'published', image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=120' },
-                                        { id: 2, title: 'Azure Bay Mansion', city: 'Benoa, Bali', views_count: '2,810', favorites_count: '194', status: 'pending', image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=120' },
-                                        { id: 3, title: 'Heritage Estate', city: 'Menteng, Jakarta', views_count: '1,120', favorites_count: '82', status: 'inactive', image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=120' }
-                                    ]).map((p) => (
+                                    {filteredProperties.map((p) => (
                                         <tr key={p.id} className="hover:bg-[#FAF6F0]/50 transition-colors">
                                             <td className="py-3 flex items-center gap-3">
-                                                <img 
-                                                    src={p.image || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=120"} 
-                                                    alt={p.title} 
+                                                <img
+                                                    src={p.image || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=120"}
+                                                    alt={p.title}
                                                     className="w-10 h-10 object-cover rounded-xl border border-gray-100 flex-shrink-0"
                                                 />
                                                 <div className="min-w-0">
@@ -332,15 +326,22 @@ const StatsDashboard = () => {
                                                     p.status === 'pending' ? 'bg-[#FFF3E0] text-[#E65100]' :
                                                     'bg-[#FFEBEE] text-[#C62828]'
                                                 }`}>
-                                                    {p.status === 'published' || p.status === 'aktif' ? 'AKTIF' : 
+                                                    {p.status === 'published' || p.status === 'aktif' ? 'AKTIF' :
                                                      p.status === 'pending' ? 'PENDING' : 'NONAKTIF'}
                                                 </span>
                                             </td>
                                             <td className="py-3 text-right">
-                                                <button className="text-[#A39A8E] hover:text-[#2A2621] font-bold text-base px-1">⋮</button>
+                                                <button className="text-[#A39A8E] hover:text-[#2A2621] font-bold text-base px-1">...</button>
                                             </td>
                                         </tr>
                                     ))}
+                                    {filteredProperties.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="py-10 text-center text-xs text-[#9C9487]">
+                                                Tidak ada properti untuk ditampilkan.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>

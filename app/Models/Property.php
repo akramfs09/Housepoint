@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\City;
+use App\Models\Province;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -17,6 +19,10 @@ class Property extends Model
         'price',
         'type',
         'address',
+        'province_id',
+        'city_id',
+        'gmaps_url',
+        'gmaps_query',
         'city',
         'province',
         'bedrooms',
@@ -42,6 +48,8 @@ class Property extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'province_id' => 'integer',
+        'city_id' => 'integer',
         'bedrooms' => 'integer',
         'bathrooms' => 'integer',
         'land_area' => 'integer',
@@ -65,6 +73,16 @@ class Property extends Model
     public function images()
     {
         return $this->hasMany(PropertyImage::class)->orderBy('order');
+    }
+
+    public function provinceRelation()
+    {
+        return $this->belongsTo(Province::class);
+    }
+
+    public function cityRelation()
+    {
+        return $this->belongsTo(City::class);
     }
 
     /**
@@ -94,7 +112,13 @@ class Property extends Model
     public function currentFeaturedListing()
     {
         return $this->hasOne(FeaturedListing::class)
-            ->whereIn('status', ['pending', 'paid', 'active'])
+            ->where(function ($query) {
+                $query->where('status', 'paid')
+                    ->orWhere(function ($activeQuery) {
+                        $activeQuery->where('status', 'active')
+                            ->where('expires_at', '>', now());
+                    });
+            })
             ->latestOfMany();
     }
 }

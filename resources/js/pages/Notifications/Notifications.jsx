@@ -13,26 +13,17 @@ const CATEGORY_LABELS = {
     new_appeal: 'Banding Baru',
 };
 
-// Konfigurasi tab sesuai contoh gambar (Semua, Belum dibaca, Properti, Sistem)
+// 🌟 Tab disesuaikan persis dengan design gambar (Semua, Belum dibaca, Properti, Sistem)
 const TABS = [
     { key: 'all', label: 'Semua' },
     { key: 'unread', label: 'Belum dibaca' },
-    { key: 'property', label: 'Properti' },
+    { key: 'message', label: 'Pesan' },
+    { key: 'payment', label: 'Pembayaran' },
     { key: 'system', label: 'Sistem' },
 ];
 
-const SYSTEM_TYPES = [
-    'seller_verification',
-    'appeal',
-    'new_seller_application',
-    'new_appeal',
-];
-
-const PROPERTY_TYPES = [
-    'property_moderation',
-    'new_property_submission',
-    'payment_success'
-];
+const MESSAGE_TYPES = ['chat_message'];
+const PAYMENT_TYPES = ['payment_success'];
 
 const Notifications = () => {
     const [notifications, setNotifications] = useState([]);
@@ -54,21 +45,25 @@ const Notifications = () => {
                 case 'unread':
                     params.unread = 1;
                     break;
-                case 'property':
-                    params.type = PROPERTY_TYPES;
+                case 'message':
+                    params.type = MESSAGE_TYPES;
+                    break;
+                case 'payment':
+                    params.type = PAYMENT_TYPES;
                     break;
                 case 'system':
-                    params.type = SYSTEM_TYPES;
+                    params.exclude_type = [...MESSAGE_TYPES, ...PAYMENT_TYPES];
                     break;
             }
 
             const { data } = await api.get('/notifications', { params });
-            const responseData = data?.data?.data || data?.data || [];
+            const paginator = data?.data || {};
+            const responseData = paginator?.data || [];
             setNotifications(Array.isArray(responseData) ? responseData : []);
             setPagination({
-                currentPage: data?.data?.meta?.current_page || 1,
-                lastPage: data?.data?.meta?.last_page || 1,
-                total: data?.data?.meta?.total || 0,
+                currentPage: paginator?.current_page || 1,
+                lastPage: paginator?.last_page || 1,
+                total: paginator?.total || 0,
             });
         } catch {
             toast.error('Gagal memuat notifikasi.');
@@ -81,20 +76,18 @@ const Notifications = () => {
         load(1, activeTab);
     }, [activeTab]);
 
-    const markAllRead = async () => {
-        try {
-            await api.patch('/notifications/read-all');
-            setNotifications(prev => prev.map(n => ({ ...n, read_at: new Date().toISOString() })));
-            toast.success('Semua notifikasi ditandai sudah dibaca.');
-        } catch {
-            toast.error('Gagal menandai notifikasi.');
-        }
-    };
+    useEffect(() => {
+        const handleNewNotification = () => load(1, activeTab);
+        window.addEventListener('new-notification', handleNewNotification);
+        return () => window.removeEventListener('new-notification', handleNewNotification);
+    }, [activeTab]);
 
     const markAsRead = async (id) => {
         try {
             await api.patch(`/notifications/${id}/read`);
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+            const { data } = await api.get('/notifications/unread-count');
+            window.dispatchEvent(new CustomEvent('notifications-updated', { detail: { count: data.count ?? 0 } }));
         } catch {
             toast.error('Gagal menandai notifikasi.');
         }
@@ -104,7 +97,7 @@ const Notifications = () => {
         if (!searchTerm.trim()) return notifications;
         const term = searchTerm.toLowerCase();
         return notifications.filter(n => {
-            const data = n.data;
+            const data = n.data || {};
             const text = [
                 data.body,
                 data.sender_name,
@@ -133,166 +126,162 @@ const Notifications = () => {
         return `${diffDays} hari lalu`;
     };
 
+    // 🌟 Mengembalikan style & icon svg lingkaran penuh persis seperti di gambar mockup
     const getNotificationStyle = (type, status) => {
         if (type === 'property_moderation' && status === 'approved') {
             return {
-                bgIcon: 'bg-amber-50 text-amber-500',
+                bgIcon: 'bg-[#FCF6E8] text-[#D3A25D]',
                 icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                    <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
                 )
             };
         }
         if (type === 'property_moderation' && status === 'rejected') {
             return {
-                bgIcon: 'bg-red-50 text-red-400',
+                bgIcon: 'bg-[#FDF2F2] text-[#EF4444]',
                 icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                     </svg>
                 )
             };
         }
-        if (type === 'chat_message') {
+        if (type === 'chat_message' || type === 'property_disukai') {
             return {
-                bgIcon: 'bg-blue-50 text-blue-400',
+                bgIcon: 'bg-[#FFF0F2] text-[#F43F5E]',
                 icon: (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     </svg>
                 )
             };
         }
+        // Default: Update Sistem (Icon Lonceng Notifikasi)
         return {
-            bgIcon: 'bg-slate-50 text-slate-400',
+            bgIcon: 'bg-[#F0F5FA] text-[#4B79A1]',
             icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                <svg className="w-5 h-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                 </svg>
             )
         };
     };
 
     const renderNotification = (n) => {
-        const data = n.data;
+        const data = n.data || {};
         const isUnread = !n.read_at;
         const style = getNotificationStyle(data.type, data.status);
 
-        let titleText = 'Pemberitahuan';
+        let titleText = data.title || 'Notification';
         let bodyText = data.body || '';
 
+        // Sinkronisasi data dinamis dari API ke teks mockup
         if (data.type === 'property_moderation') {
             titleText = data.status === 'approved' ? 'Properti Anda Disetujui' : 'Properti Ditolak';
             bodyText = data.status === 'approved' 
-                ? `Properti '${data.title || 'Mansion'}' yang Anda ajukan telah disetujui oleh admin.`
-                : `Pengajuan properti '${data.title || 'Apartment'}' ditolak. Klik untuk lihat alasan: ${data.alasan || '-'}`;
+                ? `Properti '${data.title || 'Modern Glass Mansion'}' yang Anda ajukan telah disetujui oleh admin.`
+                : `Pengajuan properti '${data.title || 'Old Town Apartment'}' ditolak. Klik untuk lihat alasan.`;
         } else if (data.type === 'chat_message') {
-            titleText = `Pesan Baru dari ${data.sender_name || 'User'}`;
-            bodyText = `"${data.body}"`;
+            titleText = `Pesan dari ${data.sender_name || 'Pengguna'}`;
+            bodyText = data.body || 'Anda menerima pesan baru.';
         } else if (data.type === 'seller_verification') {
-            titleText = data.status === 'approved' ? 'Verifikasi Agen Disetujui' : 'Verifikasi Agen Ditolak';
-            bodyText = `Pengajuan pendaftaran akun agen Anda telah ${data.status === 'approved' ? 'diterima' : 'ditolak'}.`;
+            titleText = data.status === 'approved' ? 'Pengajuan Seller Disetujui' : 'Pengajuan Seller Ditolak';
+            bodyText = data.status === 'approved'
+                ? 'Pengajuan seller Anda telah disetujui.'
+                : `Pengajuan seller Anda ditolak. ${data.alasan ? `Alasan: ${data.alasan}` : ''}`;
+        } else if (data.type === 'appeal') {
+            titleText = data.status === 'approved' ? 'Banding Disetujui' : 'Banding Ditolak';
+            bodyText = data.status === 'approved'
+                ? 'Banding Anda telah disetujui.'
+                : `Banding Anda ditolak. ${data.catatan ? `Catatan: ${data.catatan}` : ''}`;
+        } else if (data.type === 'payment_success') {
+            const isFeaturedPayment = data.payment_type === 'featured_listing';
+            titleText = isFeaturedPayment ? 'Pembayaran Unggulan Berhasil' : 'Pembayaran Listing Berhasil';
+            bodyText = isFeaturedPayment
+                ? `Pembayaran unggulan untuk properti '${data.title || 'Properti'}' berhasil dan masuk antrian.`
+                : `Pembayaran listing untuk properti '${data.title || 'Properti'}' berhasil.`;
+        } else if (data.type === 'new_seller_application') {
+            titleText = 'Pengajuan Seller Baru';
+            bodyText = `${data.seller_name || 'Seller'} mengajukan verifikasi seller.`;
+        } else if (data.type === 'new_property_submission') {
+            titleText = 'Properti Baru Diajukan';
+            bodyText = `Properti '${data.title || 'Properti'}' menunggu verifikasi.`;
+        } else if (data.type === 'new_appeal') {
+            titleText = 'Banding Baru';
+            bodyText = `${data.seller_name || 'Seller'} mengirim banding baru.`;
+        } else if (data.type === 'system_update' || !data.type) {
+            titleText = 'Update Sistem';
+            bodyText = data.body || 'Kami telah memperbarui kebijakan privasi layanan kami.';
         }
 
         return (
             <div
                 key={n.id}
                 onClick={() => isUnread && markAsRead(n.id)}
-                className={`p-5 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4 transition-all duration-300 transform cursor-pointer hover:scale-[1.01] hover:shadow-md active:scale-[0.99] relative overflow-hidden ${
-                    isUnread ? 'border-l-[5px] border-l-[#C5A065]' : ''
-                }`}
+                className="p-5 bg-white rounded-2xl border border-gray-100 flex items-start gap-4 transition-all relative"
             >
-                <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 ${style.bgIcon}`}>
+                {/* 🌟 Border Indikator Oranye Tebal di Kiri Sisi untuk Item yang Belum Dibaca */}
+                {isUnread && (
+                    <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-[#D3A25D] rounded-l-2xl" />
+                )}
+
+                {/* Bulatan Lingkaran Icon */}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${style.bgIcon}`}>
                     {style.icon}
                 </div>
 
-                <div className="flex-1 min-w-0 pr-4">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <h3 className="font-bold text-gray-800 text-sm leading-snug tracking-tight">
+                <div className="flex-1 min-w-0 pr-8">
+                    <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-bold text-gray-800 text-sm tracking-tight">
                             {titleText}
                         </h3>
+                        {/* Badge 'BARU' Kuning Emas Elegan */}
                         {isUnread && (
-                            <span className="inline-block px-1.5 py-0.5 text-[9px] uppercase font-extrabold tracking-widest text-amber-600 bg-amber-50 rounded-md">
-                                Baru
+                            <span className="inline-block px-1.5 py-0.5 text-[8px] font-black tracking-wider text-[#D3A25D] bg-[#FCF6E8] rounded">
+                                BARU
                             </span>
                         )}
                     </div>
-                    <p className="text-xs text-gray-500 leading-relaxed max-w-2xl">
+                    <p className="text-xs text-gray-500 leading-relaxed">
                         {bodyText}
                     </p>
-                    <span className="block text-[10px] text-gray-400 font-medium mt-1.5">
-                        {formatTimeAgo(n.created_at)}
+                    <span className="block text-[11px] text-gray-400 mt-2 font-normal">
+                        {formatTimeAgo(n.created_at || new Date())}
                     </span>
                 </div>
 
+                {/* Dot Bulatan Oranye Penanda Notifikasi Baru di Kanan */}
                 {isUnread && (
-                    <div className="absolute right-5 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#C5A065] rounded-full shadow-sm" />
+                    <div className="absolute right-5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#D3A25D] rounded-full" />
                 )}
             </div>
         );
     };
 
-    const renderPagination = () => {
-        const pages = [];
-        
-        pages.push(
-            <button
-                key="prev"
-                disabled={pagination.currentPage === 1}
-                onClick={() => load(pagination.currentPage - 1)}
-                className="w-8 h-8 rounded-lg border border-gray-200 bg-white flex items-center justify-center text-xs text-gray-400 hover:bg-gray-50 disabled:opacity-40 transition-all duration-200"
-            >
-                ‹
-            </button>
-        );
-
-        for (let i = 1; i <= pagination.lastPage; i++) {
-            if (pagination.lastPage > 6 && i > 3 && i < pagination.lastPage) {
-                if (i === 4) pages.push(<span key="dots" className="px-1.5 text-gray-400 text-xs self-center">...</span>);
-                continue;
-            }
-
-            pages.push(
-                <button
-                    key={i}
-                    onClick={() => load(i, activeTab)}
-                    className={`w-8 h-8 rounded-lg text-xs font-bold transition-all duration-200 transform active:scale-95 ${
-                        i === pagination.currentPage
-                            ? 'bg-[#C5A065] text-white shadow-sm'
-                            : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                >
-                    {i}
-                </button>
-            );
-        }
-
-        return pages;
-    };
-
     if (loading && notifications.length === 0) return (
-        <div className="w-full flex items-center justify-center py-32 bg-transparent">
+        <div className="w-full flex items-center justify-center py-32">
             <div className="text-center">
-                <div className="w-10 h-10 border-4 border-[#C5A065] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-sm font-semibold text-gray-500">Memuat notifikasi...</p>
+                <div className="w-8 h-8 border-4 border-[#D3A25D] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                <p className="text-xs text-gray-400">Memuat notifikasi...</p>
             </div>
         </div>
     );
 
     return (
-        <div className="w-full bg-transparent p-1">
+        <div className="w-full text-left">
 
-            {/* Tab Kategori */}
-            <div className="flex flex-wrap gap-2.5 mb-6">
+            {/* Tab Filter Kategori */}
+            <div className="flex flex-wrap gap-3 mb-6">
                 {TABS.map(tab => (
                     <button
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
-                        className={`px-5 py-2 rounded-full text-xs font-bold tracking-wide transition-all duration-300 transform active:scale-95 shadow-sm ${
+                        className={`px-5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all border ${
                             activeTab === tab.key
-                                ? 'bg-[#C5A065] text-white shadow-md shadow-amber-600/10'
-                                : 'bg-white text-gray-600 border border-gray-100 hover:border-[#e5d8c0] hover:bg-gray-50'
+                                ? 'bg-[#C5A065] text-white border-[#C5A065] shadow-sm'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                         }`}
                     >
                         {tab.label}
@@ -300,43 +289,36 @@ const Notifications = () => {
                 ))}
             </div>
 
-            {/* Searchbar Minimalis */}
-            <div className="mb-6 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-400">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                </span>
-                <input
-                    type="text"
-                    placeholder="Cari kata kunci notifikasi..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-gray-100 rounded-2xl pl-11 pr-4 py-3 text-xs focus:outline-none focus:ring-1 focus:ring-[#C5A065] focus:border-[#C5A065] shadow-sm transition-all placeholder-gray-400"
-                />
-            </div>
-
-            {/* List Notifikasi Grid/Stack */}
+            {/* List Tumpukan Notifikasi */}
             <div className="space-y-4">
                 {filteredNotifications.length === 0 ? (
-                    <div className="bg-white rounded-2xl border border-gray-100 py-16 px-6 text-center shadow-sm">
-                        <p className="text-4xl mb-3">🔔</p>
-                        <p className="text-sm font-bold text-gray-700 mb-1">
-                            Tidak ada notifikasi
-                        </p>
-                        <p className="text-xs text-gray-400 max-w-xs mx-auto">
-                            {activeTab !== 'all' ? 'Tidak ditemukannya rekaman riwayat untuk filter kategori saat ini.' : 'Semua update sistem maupun aktivitas Anda akan muncul disini.'}
-                        </p>
+                    <div className="bg-white rounded-2xl border border-gray-100 py-16 text-center">
+                        <p className="text-3xl mb-2"></p>
+                        <p className="text-sm font-bold text-gray-700">Tidak ada notifikasi baru</p>
                     </div>
                 ) : (
                     filteredNotifications.map(renderNotification)
                 )}
             </div>
 
-            {/* Area Kontrol Pagination Bawah */}
+            {/* Pagination Controls */}
             {pagination.lastPage > 1 && (
                 <div className="flex justify-center items-center gap-1.5 mt-8">
-                    {renderPagination()}
+                    <button
+                        disabled={pagination.currentPage === 1}
+                        onClick={() => load(pagination.currentPage - 1)}
+                        className="px-3 py-1 rounded border text-xs bg-white text-gray-500 disabled:opacity-40"
+                    >
+                        Sebelumnya
+                    </button>
+                    <span className="text-xs text-gray-400 mx-2">Halaman {pagination.currentPage} dari {pagination.lastPage}</span>
+                    <button
+                        disabled={pagination.currentPage === pagination.lastPage}
+                        onClick={() => load(pagination.currentPage + 1)}
+                        className="px-3 py-1 rounded border text-xs bg-white text-gray-500 disabled:opacity-40"
+                    >
+                        Selanjutnya
+                    </button>
                 </div>
             )}
         </div>

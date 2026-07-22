@@ -31,12 +31,7 @@ const CustomerProfile = () => {
                 kota: d.kota || 'DIY',
             });
             setPreviewFoto(d.foto_profil || null);
-            // Data aktivitas contoh (bisa diganti dengan API)
-            setActivities([
-                { id: 1, type: 'view', title: 'Melihat Menteng Royal Villa', time: '2 jam yang lalu', location: 'Jakarta Pusat' },
-                { id: 2, type: 'favorite', title: 'Menyimpan Favorit: Kemang Residence', time: 'Kemarin', location: 'Jakarta Selatan' },
-                { id: 3, type: 'chat', title: 'Menghubungi Agen Budi Santoso', time: '2 hari yang lalu', location: 'Terkait: Pondok Indah Suites' },
-            ]);
+            setActivities(d.activities || []);
         } catch { toast.error('Gagal memuat profil.'); }
         finally { setLoading(false); }
     };
