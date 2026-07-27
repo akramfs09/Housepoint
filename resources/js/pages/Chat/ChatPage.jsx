@@ -204,19 +204,25 @@ export default function ChatPage() {
             setMessages(messageList);
             setNextPageUrl(data.next_page_url || null);
 
-            api.patch(`/chat/conversations/${conv.id}/read`).catch(() => {});
+            api.patch(`/chat/conversations/${conv.id}/read`)
+                .then(() => {
+                    window.dispatchEvent(new CustomEvent('chat-updated'));
+                })
+                .catch(() => {});
 
             setConversations((prev) =>
                 prev.map((c) =>
                     c.id === conv.id ? { ...c, unread_count: 0 } : c
                 )
             );
+            window.dispatchEvent(new CustomEvent('chat-updated'));
 
             // Silently dapatkan stats terbaru
             api.get('/chat/conversations', {
                 params: { archived: filterRef.current === 'archived' },
             }).then(({ data }) => {
                 setStats(data.stats || { total: 0, unread: 0, archived: 0 });
+                window.dispatchEvent(new CustomEvent('chat-updated'));
             }).catch(() => {});
 
             scrollToBottom();
@@ -307,7 +313,13 @@ export default function ChatPage() {
 
             if (document.hidden) toast.success(`Pesan baru dari ${msg.user_name}`);
 
-            api.patch(`/chat/conversations/${activeConversation.id}/read`).catch(() => {});
+            api.patch(`/chat/conversations/${activeConversation.id}/read`)
+                .then(() => {
+                    window.dispatchEvent(new CustomEvent('chat-updated'));
+                })
+                .catch(() => {});
+
+            window.dispatchEvent(new CustomEvent('chat-updated'));
 
             if (isUserAtBottom.current) scrollToBottom();
         });
@@ -325,16 +337,26 @@ export default function ChatPage() {
         };
     }, [activeConversation, user?.id, scrollToBottom]);
 
-    // WebSocket: global new-message notification
+    // WebSocket: global new-message notification & custom window events
     useEffect(() => {
         if (!user) return;
+
+        const handleUpdate = () => {
+            loadConversations(debouncedSearchRef.current, filterRef.current, false);
+        };
+
+        window.addEventListener('chat-updated', handleUpdate);
+        window.addEventListener('new-notification', handleUpdate);
 
         const userChannel = echo.private(`user.${user.id}`);
         userChannel.listen('.new.message', () => {
             loadConversations(debouncedSearchRef.current, filterRef.current, false);
+            window.dispatchEvent(new CustomEvent('chat-updated'));
         });
 
         return () => {
+            window.removeEventListener('chat-updated', handleUpdate);
+            window.removeEventListener('new-notification', handleUpdate);
             echo.leaveChannel(`user.${user.id}`);
         };
     }, [user, loadConversations]);
@@ -419,6 +441,22 @@ export default function ChatPage() {
             loadConversations(debouncedSearch, filter, false);
         } catch {
             toast.error('Gagal membatalkan arsip.');
+        }
+    };
+
+    const deleteConversation = async (convId) => {
+        try {
+            await api.delete(`/chat/conversations/${convId}`);
+            setOpenMenuId(null);
+            if (activeConversation?.id === convId) {
+                setActiveConversation(null);
+                activeConvIdRef.current = null;
+            }
+            toast.success('Percakapan berhasil dihapus.');
+            loadConversations(debouncedSearch, filter, false);
+            window.dispatchEvent(new CustomEvent('chat-updated'));
+        } catch {
+            toast.error('Gagal menghapus percakapan.');
         }
     };
 
@@ -621,22 +659,33 @@ export default function ChatPage() {
                                         </div>
 
                                         {openMenuId === conv.id && (
-                                            <div className="absolute right-4 top-10 bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 min-w-[130px]" style={{ zIndex: 50 }}>
+                                            <div className="absolute right-4 top-10 bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 min-w-[140px]" style={{ zIndex: 50 }}>
                                                 {conv.archived ? (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); unarchiveConversation(conv.id); }}
-                                                        className="w-full text-left px-3 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                                        className="w-full text-left px-3 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
                                                     >
-                                                        📤 Keluar Arsip
+                                                        <span>📤</span> Keluar Arsip
                                                     </button>
                                                 ) : (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); archiveConversation(conv.id); }}
-                                                        className="w-full text-left px-3 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                                        className="w-full text-left px-3 py-1.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
                                                     >
-                                                        📥 Masuk Arsip
+                                                        <span>📥</span> Masuk Arsip
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (window.confirm('Apakah Anda yakin ingin menghapus percakapan ini?')) {
+                                                            deleteConversation(conv.id);
+                                                        }
+                                                    }}
+                                                    className="w-full text-left px-3 py-1.5 text-[11px] font-medium text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-1.5 border-t border-gray-100 mt-1 pt-1.5"
+                                                >
+                                                    <span>🗑️</span> Hapus Chat
+                                                </button>
                                             </div>
                                         )}
                                     </div>

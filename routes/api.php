@@ -73,6 +73,8 @@ Route::prefix('auth')->group(function () {
         ->middleware('throttle:register');
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])
         ->middleware('throttle:verify-otp');
+    Route::post('/check-otp', [AuthController::class, 'checkOtp'])
+        ->middleware('throttle:verify-otp');
     Route::post('/login', [AuthController::class, 'login'])
         ->middleware('throttle:login');
     Route::post('/logout', [AuthController::class, 'logout'])
@@ -117,6 +119,9 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
     Route::patch('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::patch('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::delete('/notifications/all', [NotificationController::class, 'destroyAll']);
+    Route::post('/notifications/delete-batch', [NotificationController::class, 'destroyBatch']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 });
 
 // ================================================
@@ -149,6 +154,7 @@ Route::middleware(['auth:sanctum', 'banned', 'role:customer,seller'])->prefix('c
     Route::patch('/conversations/{conversation}/read', [ChatController::class, 'markRead']);
     Route::patch('/conversations/{conversation}/archive', [ChatController::class, 'archive']);
     Route::patch('/conversations/{conversation}/unarchive', [ChatController::class, 'unarchive']);
+    Route::delete('/conversations/{conversation}', [ChatController::class, 'destroy']);
 });
 
 // ================================================
@@ -176,6 +182,7 @@ Route::middleware(['auth:sanctum', 'banned'])->group(function () {
         Route::delete('/seller/properties/{property}', [SellerController::class, 'destroy']);
         Route::get('/seller/properties', [SellerController::class, 'myProperties']);
         Route::patch('/properties/{property}/submit', [SellerController::class, 'submit']);
+        Route::patch('/seller/properties/{property}/toggle-status-jual', [SellerController::class, 'toggleStatusJual']);
         
         // Pembayaran (Upload Properti)
         Route::post('/seller/properties/{property}/pay', [SellerController::class, 'initiatePayment']);

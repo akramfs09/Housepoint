@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { fetchSellerDashboard } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import {
@@ -80,6 +80,8 @@ const DashboardCard = ({ title, value, subtext, type }) => {
     );
 };
 
+const WEEK_COLORS = ['#D4A44C', '#8A6E3D', '#E5C07B', '#A88B4A'];
+
 // ==========================================
 // KOMPONEN DASHBOARD UTAMA
 // ==========================================
@@ -129,27 +131,34 @@ const StatsDashboard = () => {
     }, [views_chart]);
 
     // ==========================================
-    // LOGIKA REAL-TIME: PENINGKATAN FAVORIT (MENTOK 100%)
+    // DIAGRAM PERBANDINGAN FAVORIT PER-MINGGU DALAM BULAN
     // ==========================================
     const favoriteStats = useMemo(() => {
-        const total = kpi.total_favorites ?? 892; 
-        const baru = kpi.new_favorites_this_week ?? 124; 
-        
-        // Memastikan nilai 'tetap' tidak bernilai negatif
-        const tetap = Math.max(0, total - baru);
-        
-        // Kalkulasi persentase dan diproteksi menggunakan Math.min agar mentok di 100%
-        const rawPercentage = total > 0 ? Math.round((baru / total) * 100) : 0;
-        const percentage = Math.min(rawPercentage, 100);
-        
-        // Data representasi lingkaran menggunakan proporsi persentase aman (max 100)
-        const chartData = [
-            { name: 'Baru', value: percentage },
-            { name: 'Tetap', value: 100 - percentage }
-        ];
+        const weekly = dashboard?.favorites_chart || [];
+        const total = kpi.total_favorites ?? weekly.reduce((acc, w) => acc + (w.count || 0), 0);
 
-        return { total, baru, tetap, percentage, chartData };
-    }, [kpi]);
+        if (total === 0) {
+            return {
+                total: 0,
+                chartData: [{ name: 'Tidak ada favorit', count: 1, color: COLOR_RING_EMPTY }],
+                weeklyList: [],
+                isEmpty: true,
+            };
+        }
+
+        const chartData = weekly.map((w, idx) => ({
+            name: w.name,
+            count: w.count || 0,
+            color: WEEK_COLORS[idx % WEEK_COLORS.length],
+        }));
+
+        return {
+            total,
+            chartData,
+            weeklyList: chartData,
+            isEmpty: false,
+        };
+    }, [dashboard, kpi]);
 
     if (loading) return <div className="flex items-center justify-center py-20 text-sm font-medium text-gray-400">Memuat dashboard...</div>;
     if (!dashboard) return <div className="flex items-center justify-center py-20 text-sm font-medium text-gray-400">Data tidak tersedia.</div>;
@@ -173,28 +182,26 @@ const StatsDashboard = () => {
                             className="text-xs font-bold text-[#2A2621] bg-transparent focus:outline-none cursor-pointer"
                         />
                     </div>
-        
                 </div>
             </div>
 
             {/* --- GRID KPI CARD UTAMA --- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <DashboardCard type="properties" title="Total Properti Aktif" value={kpi.active_properties ?? 24} subtext="+2 bulan ini" />
-                <DashboardCard type="views" title="Total Dilihat" value={(kpi.total_views ?? 12482).toLocaleString('id')} subtext="+15.4% vs lusa" />
-                <DashboardCard type="favorites" title="Total Favorit" value={favoriteStats.total.toLocaleString('id')} subtext="+5.2% vs lusa" />
-                <DashboardCard type="contacts" title="Total Kontak Masuk" value={kpi.total_contacts ?? 156} subtext="-2.1% vs lusa" />
+                <DashboardCard type="properties" title="Total Properti Aktif" value={kpi.active_properties ?? 0}/>
+                <DashboardCard type="views" title="Total Dilihat" value={(kpi.total_views ?? 0).toLocaleString('id')}/>
+                <DashboardCard type="favorites" title="Total Favorit" value={favoriteStats.total.toLocaleString('id')}/>
+                <DashboardCard type="contacts" title="Total Kontak Masuk" value={kpi.total_contacts ?? 0}/>
             </div>
 
-            {/* --- GRAFIK ANALITIK UTAMA (SESUAI GAMBAR 1:1) --- */}
+            {/* --- GRAFIK ANALITIK UTAMA --- */}
             <div className="bg-[#FFFBF7] rounded-2xl p-8 border border-[#F4EFEA] shadow-[0_6px_20px_rgba(139,115,85,0.02)]">
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <h2 className="text-[18px] font-bold text-[#1F1B17]">Grafik Jumlah View Properti</h2>
-                        <p className="text-[13px] text-[#7A7165] mt-1">Data harian selama 30 hari terakhir</p>
+                        <p className="text-[13px] text-[#7A7165] mt-1">Data harian selama bulan terpilih</p>
                     </div>
                     <div className="flex items-center gap-1.5 cursor-pointer text-[#8A6E3D] hover:text-[#735B32] transition-colors">
-                        <span className="text-[14px] font-semibold">Last 30 Days</span>
-                        <span className="text-[10px] pt-0.5">â–¼</span>
+                        <span className="text-[14px] font-semibold">Periode Bulan</span>
                     </div>
                 </div>
                 
@@ -230,49 +237,58 @@ const StatsDashboard = () => {
             {/* --- PANEL BAWAH --- */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 
-                {/* BLOK PERSENTASE REALTIME (KIRI) */}
+                {/* BLOK PERBANDINGAN FAVORIT PER-MINGGU (DONUT CHART) */}
                 <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-[#F0E6D8] shadow-sm flex flex-col justify-between min-h-[420px]">
                     <div>
-                        <h2 className="text-base font-bold text-[#2A2621]">Peningkatan Favorit</h2>
-                        <p className="text-xs text-[#9C9487] mt-0.5">Tren mingguan interaksi</p>
+                        <h2 className="text-base font-bold text-[#2A2621]">Perbandingan Favorit</h2>
+                        <p className="text-xs text-[#9C9487] mt-0.5">Distribusi favorit per minggu</p>
                     </div>
 
-                    <div className="relative flex justify-center items-center h-48">
+                    <div className="relative flex justify-center items-center h-48 my-2">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
                                     data={favoriteStats.chartData}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={68}
-                                    outerRadius={84}
+                                    innerRadius={65}
+                                    outerRadius={82}
                                     startAngle={90}
                                     endAngle={-270}
-                                    dataKey="value"
+                                    dataKey="count"
                                 >
-                                    <Cell fill={COLOR_GOLD} />
-                                    <Cell fill={COLOR_RING_EMPTY} />
+                                    {favoriteStats.chartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
                                 </Pie>
+                                {!favoriteStats.isEmpty && (
+                                    <Tooltip
+                                        formatter={(val, name, item) => [`${item.payload.count} Favorit`, name]}
+                                    />
+                                )}
                             </PieChart>
                         </ResponsiveContainer>
-                        <div className="absolute text-center">
-                            <span className="text-2xl font-bold text-[#2A2621]">{favoriteStats.percentage}%</span>
+                        <div className="absolute text-center flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-bold text-[#2A2621] leading-none">{favoriteStats.total}</span>
+                            <span className="text-[10px] font-semibold text-[#9C9487] mt-1 uppercase tracking-wider">Favorit</span>
                         </div>
                     </div>
 
-                    <div className="space-y-2.5 border-t border-[#F5EFE4] pt-4 text-xs font-semibold">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-[#6B6255]">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#D4A44C]" /> Baru
-                            </div>
-                            <span className="text-[#2A2621] font-bold">+{favoriteStats.baru}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2 text-[#6B6255]">
-                                <span className="w-2.5 h-2.5 rounded-full bg-[#F4EEE1]" /> Tetap
-                            </div>
-                            <span className="text-[#2A2621] font-bold">{favoriteStats.tetap}</span>
-                        </div>
+                    {/* LEGEND DISTRIBUSI MINGGUAN */}
+                    <div className="space-y-2 border-t border-[#F5EFE4] pt-3 text-xs font-semibold">
+                        {favoriteStats.isEmpty ? (
+                            <p className="text-center text-[11px] text-gray-400 py-2">Belum ada favorit di bulan ini</p>
+                        ) : (
+                            favoriteStats.weeklyList.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2 text-[#6B6255]">
+                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                        <span className="truncate">{item.name}</span>
+                                    </div>
+                                    <span className="text-[#2A2621] font-bold shrink-0">{item.count}</span>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -282,7 +298,7 @@ const StatsDashboard = () => {
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                             <h2 className="text-base font-bold text-[#2A2621]">Performa Listing</h2>
                             <div className="relative w-full sm:w-60">
-                                <span className="absolute left-3 top-2.5 text-gray-400 text-xs">ðŸ”</span>
+                                <span className="absolute left-3 top-2.5 text-gray-400 text-xs"></span>
                                 <input
                                     type="text"
                                     placeholder="Cari listing..."
@@ -301,7 +317,7 @@ const StatsDashboard = () => {
                                         <th className="pb-3 font-semibold text-center">Views</th>
                                         <th className="pb-3 font-semibold text-center">Favorit</th>
                                         <th className="pb-3 font-semibold text-center">Status</th>
-                                        <th className="pb-3 font-semibold text-right">Action</th>
+                                        
                                     </tr>
                                 </thead>
                                 <tbody className="text-xs font-medium text-[#4A433A] divide-y divide-[#FAF6F0]">
@@ -329,9 +345,6 @@ const StatsDashboard = () => {
                                                     {p.status === 'published' || p.status === 'aktif' ? 'AKTIF' :
                                                      p.status === 'pending' ? 'PENDING' : 'NONAKTIF'}
                                                 </span>
-                                            </td>
-                                            <td className="py-3 text-right">
-                                                <button className="text-[#A39A8E] hover:text-[#2A2621] font-bold text-base px-1">...</button>
                                             </td>
                                         </tr>
                                     ))}

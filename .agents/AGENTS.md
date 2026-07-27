@@ -20,6 +20,7 @@ Dokumentasi lengkap arsitektur, schema, routes, dan patterns ada di skill `house
 - Semua response menggunakan trait `ApiResponse` untuk format konsisten
 - Gunakan **Enum** untuk status constants (`app/Enums/`)
 - Route baru ditambahkan di `routes/api.php` dengan grouping yang sesuai
+- **Google OAuth**: Menggunakan prefiks `auth/` sehingga rutenya adalah `/api/auth/google/redirect` dan `/api/auth/google/callback`. Pastikan redirect URI di Google Console & `.env` menyertakan `/auth/` ini.
 
 #### Frontend (React)
 - Semua API call melalui `resources/js/services/api.js`

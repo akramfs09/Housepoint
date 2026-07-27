@@ -173,6 +173,28 @@ class AuthService
         $otpRecord->save();
     }
 
+    public function checkOtp(array $data): void
+    {
+        $purpose = $data['purpose'] ?? 'reset_password';
+        $otpRecord = Otp::where('email', $data['email'])
+            ->where('purpose', $purpose)
+            ->first();
+
+        if (!$otpRecord || now()->greaterThan($otpRecord->expires_at)) {
+            throw new \Exception('OTP tidak ditemukan atau kadaluarsa.');
+        }
+
+        if ($otpRecord->attempts >= 5) {
+            $otpRecord->delete();
+            throw new \Exception('Terlalu banyak percobaan. Silakan minta OTP baru.');
+        }
+
+        if (!Hash::check($data['otp'], $otpRecord->token)) {
+            $otpRecord->increment('attempts');
+            throw new \Exception('Kode OTP salah.');
+        }
+    }
+
     public function resendOtp(array $data): void
     {
         $purpose = $data['purpose'] ?? 'register';

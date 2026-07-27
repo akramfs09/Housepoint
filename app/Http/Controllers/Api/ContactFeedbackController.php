@@ -329,6 +329,10 @@ class ContactFeedbackController extends Controller
 
     private function reviewPayload(WebsiteReview $review): array
     {
+        $user = $review->user;
+        $roleName = $user?->role?->nama_role;
+        $isSeller = $roleName === 'seller' || ($user?->sellerProfile && $user->sellerProfile->status_verifikasi === 'approved');
+
         return [
             'id' => $review->id,
             'rating' => $review->rating,
@@ -339,11 +343,13 @@ class ContactFeedbackController extends Controller
             'created_at' => $review->created_at,
             'updated_at' => $review->updated_at,
             'reviewed_at' => $review->reviewed_at,
-            'user' => $review->user ? [
-                'id' => $review->user->id,
-                'name' => $review->show_name ? $review->user->name : 'Pengguna HousePoint',
-                'email' => $review->user->email,
-                'avatar_url' => $review->show_name ? $review->user->avatar_url : null,
+            'user' => $user ? [
+                'id' => $user->id,
+                'name' => $review->show_name ? $user->name : 'Pengguna HousePoint',
+                'email' => $user->email,
+                'role' => $roleName,
+                'is_seller' => $isSeller,
+                'avatar_url' => $review->show_name ? $user->avatar_url : null,
             ] : null,
         ];
     }

@@ -48,10 +48,20 @@ const LoginPage = () => {
             }, 2000);
 
         } catch (err) {
-            // 🌟 2. Jika Login Gagal: Tampilkan Pop-up Gagal
-            setShowNotification({ visible: true, type: 'failed' });
-            
-            if (err.response?.status === 403) {
+            const isThrottled = err.response?.status === 429;
+
+            setShowNotification({
+                visible: true,
+                type: 'failed',
+                isThrottled: isThrottled,
+                message: isThrottled
+                    ? (err.response?.data?.message || 'Terlalu banyak percobaan login. Silakan tunggu 1 menit.')
+                    : null
+            });
+
+            if (isThrottled) {
+                setError('Terlalu banyak percobaan login. Silakan tunggu 1 menit.');
+            } else if (err.response?.status === 403) {
                 setError(err.response?.data?.message || 'Akun Anda tidak dapat digunakan.');
             } else {
                 setFieldErrors({
@@ -66,11 +76,11 @@ const LoginPage = () => {
 
     return (
         <div className="min-h-screen bg-[#FDF6E2] flex flex-col justify-between font-sans antialiased select-none selection:bg-[#D4A44C]/30 relative overflow-x-hidden">
-            
+
             {/* 🌟 OVERLAY MODAL NOTIFIKASI POP-UP (MUNCUL DI TENGAH LAYAR) 🌟 */}
             {showNotification.visible && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] transition-all duration-300 animate-fade-in">
-                    
+
                     {/* KONDISI 1: POP-UP LOGIN GAGAL */}
                     {showNotification.type === 'failed' && (
                         <div className="w-[90%] max-w-[400px] bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-red-100 flex flex-col items-center justify-center relative transform scale-100 animate-pop-up">
@@ -82,12 +92,14 @@ const LoginPage = () => {
                             </button>
                             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-5">
                                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
                             </div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-2">Login Gagal</h2>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">
+                                {showNotification.isThrottled ? 'Batas Percobaan Terlampaui' : 'Login Gagal'}
+                            </h2>
                             <p className="text-xs sm:text-sm text-gray-500 max-w-[280px] leading-relaxed">
-                                Pastikan Username dan Password benar.
+                                {showNotification.message || 'Pastikan Username dan Password benar.'}
                             </p>
                         </div>
                     )}
@@ -280,7 +292,12 @@ const LoginPage = () => {
                         <div className="space-y-4">
                             <button
                                 type="button"
-                                onClick={() => window.location.href = 'http://localhost:8000/api/auth/google/redirect'}
+                                onClick={() => {
+                                    const redirectUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                                        ? 'http://localhost:8000/api/auth/google/redirect'
+                                        : `${window.location.origin}/api/auth/google/redirect`;
+                                    window.location.href = redirectUrl;
+                                }}
                                 className="w-full h-11 border border-gray-200 hover:border-[#D4A44C] bg-white rounded-xl flex items-center justify-center gap-2.5 text-sm font-bold text-gray-700 hover:bg-amber-50/20 active:scale-[0.98] transition-all duration-200"
                             >
                                 <svg className="w-4 h-4" viewBox="0 0 24 24">

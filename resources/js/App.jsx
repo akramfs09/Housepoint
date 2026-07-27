@@ -20,6 +20,7 @@ function AppInner() {
         // Listener chat yang sudah ada (tetap dipertahankan)
         channel.listen('.new.message', (data) => {
             toast.success(`${data.sender_name}: ${data.body}`);
+            window.dispatchEvent(new CustomEvent('chat-updated'));
         });
 
         // Listener notifikasi Laravel (database + broadcast)
@@ -30,42 +31,43 @@ function AppInner() {
             switch (type) {
                 case 'chat_message':
                     toast.success(`${data.sender_name}: ${data.body}`);
+                    window.dispatchEvent(new CustomEvent('chat-updated'));
                     break;
                 case 'seller_verification':
                     if (data.status === 'approved') {
                         toast.success('Pengajuan seller Anda disetujui!');
                     } else {
-                        toast.error(`❌ Pengajuan seller ditolak: ${data.alasan || 'tanpa alasan'}`);
+                        toast.error(` Pengajuan seller ditolak: ${data.alasan || 'tanpa alasan'}`);
                     }
                     break;
                 case 'property_moderation':
                     if (data.status === 'approved') {
                         toast.success('Properti Anda disetujui!');
                     } else {
-                        toast.error(`❌ Properti ditolak: ${data.alasan || 'tanpa alasan'}`);
+                        toast.error(` Properti ditolak: ${data.alasan || 'tanpa alasan'}`);
                     }
                     break;
                 case 'appeal':
                     if (data.status === 'approved') {
                         toast.success('Banding Anda disetujui!');
                     } else {
-                        toast.error(`❌ Banding ditolak: ${data.catatan || 'tanpa catatan'}`);
+                        toast.error(` Banding ditolak: ${data.catatan || 'tanpa catatan'}`);
                     }
                     break;
                 case 'payment_success':
                     toast.success('Pembayaran berhasil! Properti Anda telah dipublikasikan.');
                     break;
                 case 'new_seller_application':
-                    toast.info(`Pengajuan seller baru dari ${data.seller_name}`);
+                    toast(` Pengajuan agen baru dari ${data.seller_name}`, { icon: '👤' });
                     break;
                 case 'new_property_submission':
-                    toast.info(`Properti baru diajukan: ${data.title}`);
+                    toast(` Properti baru diajukan: ${data.title}`, { icon: '🏢' });
                     break;
                 case 'new_appeal':
-                    toast.info(`Banding baru dari ${data.seller_name}`);
+                    toast(` Banding baru dari agen ${data.seller_name}`, { icon: '📋' });
                     break;
                 default:
-                    toast.info('ℹAnda memiliki notifikasi baru');
+                    toast(' Anda memiliki notifikasi baru');
             }
 
             // Anda juga bisa memicu event custom untuk memperbarui badge lonceng

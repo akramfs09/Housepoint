@@ -168,6 +168,8 @@ description: Konteks lengkap repositori HousePoint — platform properti Laravel
 | POST | `/auth/reset-password` | throttle |
 | POST | `/auth/resend-otp` | throttle |
 | PATCH | `/auth/password` | auth:sanctum |
+| GET | `/auth/google/redirect` | Redirect login Google |
+| GET | `/auth/google/callback` | Callback login Google |
 | GET | `/user` | auth:sanctum (current user) |
 
 ### Customer & Seller (auth + role:customer,seller)
@@ -181,7 +183,7 @@ description: Konteks lengkap repositori HousePoint — platform properti Laravel
 
 ### Seller (auth + role:seller + approved_seller)
 - Dashboard: `GET /seller/dashboard`
-- Properties: CRUD `/seller/properties`, submit moderasi
+- Properties: CRUD `/seller/properties`, submit moderasi, toggle status jual (`PATCH /seller/properties/{id}/toggle-status-jual`)
 - Payment: `POST /seller/properties/{property}/pay`, publish
 - Featured: initiate, publish, cancel featured payment
 - Featured queue ETA: `GET /seller/featured-queue/eta`

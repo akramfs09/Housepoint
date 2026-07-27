@@ -16,6 +16,7 @@ class VerifyOtpRequest extends FormRequest
         return [
             'email' => 'required|email',
             'otp' => 'required|string|size:6',
+            'purpose' => 'nullable|string|in:register,reset_password',
         ];
     }
 }

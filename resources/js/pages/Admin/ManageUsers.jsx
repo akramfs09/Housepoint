@@ -64,10 +64,10 @@ const ManageUsers = () => {
 
     // Konfigurasi array untuk mapping kartu
     const statCards = [
-        { id: 1, title: 'Total User', value: stats.totalUsers, trend: '+12%', isPositive: true, icon: '👥', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
-        { id: 2, title: 'Total Buyer', value: stats.totalBuyers, trend: '+5%', isPositive: true, icon: '🛍️', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
-        { id: 3, title: 'Total Seller', value: stats.totalSellers, trend: '+18%', isPositive: true, icon: '🏪', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
-        { id: 4, title: 'User Suspended', value: stats.userSuspended, trend: '2.4%', isPositive: false, icon: '🚫', iconColor: 'text-red-500', bgColor: 'bg-red-50' },
+        { id: 1, title: 'Total User', value: stats.totalUsers, isPositive: true, icon: '👥', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
+        { id: 2, title: 'Total Buyer', value: stats.totalBuyers, isPositive: true, icon: '🛍️', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
+        { id: 3, title: 'Total Seller', value: stats.totalSellers, isPositive: true, icon: '🏪', iconColor: 'text-yellow-600', bgColor: 'bg-[#fdf4db]' },
+        { id: 4, title: 'User Suspended', value: stats.userSuspended, isPositive: false, icon: '🚫', iconColor: 'text-red-500', bgColor: 'bg-red-50' },
     ];
 
     // ==========================================

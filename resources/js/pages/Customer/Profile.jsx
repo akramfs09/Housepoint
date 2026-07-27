@@ -16,6 +16,7 @@ const CustomerProfile = () => {
     const [previewFoto, setPreviewFoto] = useState(null);
     const [fotoFile, setFotoFile] = useState(null);
     const [activities, setActivities] = useState([]);
+    const [showSizeModal, setShowSizeModal] = useState(false);
 
     useEffect(() => { loadProfile(); }, []);
 
@@ -41,6 +42,11 @@ const CustomerProfile = () => {
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+                setShowSizeModal(true);
+                e.target.value = '';
+                return;
+            }
             setFotoFile(file);
             setPreviewFoto(URL.createObjectURL(file));
         }
@@ -76,6 +82,34 @@ const CustomerProfile = () => {
 
     return (
         <div className="space-y-6">
+
+            {/* MODAL POP-UP UKURAN FILE TERLALU BESAR */}
+            {showSizeModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] transition-all duration-300 animate-fade-in">
+                    <div className="w-[90%] max-w-[400px] bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-red-100 flex flex-col items-center justify-center relative transform scale-100 animate-pop-up">
+                        <button 
+                            onClick={() => setShowSizeModal(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-sm">
+                            ✕
+                        </button>
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-5">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">Ukuran File Terlalu Besar</h2>
+                        <p className="text-xs sm:text-sm text-gray-500 max-w-[280px] leading-relaxed mb-6">
+                            Ukuran foto yang Anda pilih melebihi batas maksimal <strong>10 MB</strong>. Silakan pilih foto lain yang berukuran lebih kecil.
+                        </p>
+                        <button
+                            onClick={() => setShowSizeModal(false)}
+                            className="w-full py-3 bg-[#C5A065] hover:bg-[#b08a4e] text-white rounded-xl text-sm font-bold shadow-md transition"
+                        >
+                            Mengerti
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Kolom Kiri: Informasi Profil */}
@@ -144,6 +178,7 @@ const CustomerProfile = () => {
                                         📷 Ubah Foto
                                         <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
                                     </label>
+                                    <p className="text-[11px] text-gray-400 mt-1">Maksimal 10 MB (JPG, PNG, WEBP)</p>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>

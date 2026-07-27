@@ -50,6 +50,16 @@ class AuthController extends Controller
         }
     }
 
+    public function checkOtp(VerifyOtpRequest $request)
+    {
+        try {
+            $this->authService->checkOtp($request->validated());
+            return $this->success(null, 'Kode OTP valid.');
+        } catch (\Exception $e) {
+            return $this->error($e->getMessage(), 400);
+        }
+    }
+
     public function login(LoginRequest $request)
     {
         try {

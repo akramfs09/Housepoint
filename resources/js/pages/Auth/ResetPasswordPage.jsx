@@ -8,6 +8,7 @@ const ResetPasswordPage = () => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showNotification, setShowNotification] = useState({ visible: false, title: '', message: '' });
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -36,7 +37,17 @@ const ResetPasswordPage = () => {
             setMessage(response.data.message || 'Password berhasil diperbarui.');
             setTimeout(() => navigate('/login'), 2000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Gagal mereset password.');
+            const msg = err.response?.status === 429
+                ? (err.response?.data?.message || 'Terlalu banyak percobaan reset password. Silakan tunggu 15 menit.')
+                : (err.response?.data?.message || 'Gagal mereset password.');
+            setError(msg);
+            if (err.response?.status === 429) {
+                setShowNotification({
+                    visible: true,
+                    title: 'Batas Percobaan Terlampaui',
+                    message: msg
+                });
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -44,7 +55,29 @@ const ResetPasswordPage = () => {
 
     return (
         <div className="min-h-screen bg-[#FDF6E2] flex flex-col justify-between font-sans antialiased select-none selection:bg-[#D4A44C]/30 relative overflow-x-hidden">
-            
+
+            {/* OVERLAY MODAL NOTIFIKASI POP-UP */}
+            {showNotification.visible && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] transition-all duration-300 animate-fade-in">
+                    <div className="w-[90%] max-w-[400px] bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-red-100 flex flex-col items-center justify-center relative transform scale-100 animate-pop-up">
+                        <button 
+                            onClick={() => setShowNotification({ visible: false, title: '', message: '' })}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 font-bold text-sm">
+                            ✕
+                        </button>
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center text-red-500 mb-5">
+                            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-800 mb-2">{showNotification.title}</h2>
+                        <p className="text-xs sm:text-sm text-gray-500 max-w-[280px] leading-relaxed">
+                            {showNotification.message}
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* 1. BACKGROUND HERO */}
             <div className="absolute left-0 top-0 bottom-0 w-full lg:w-[42%] h-[45vh] lg:h-full z-0 overflow-hidden rounded-br-[120px] lg:rounded-br-none lg:rounded-tr-[380px] shadow-[12px_0_30px_rgba(0,0,0,0.04)]">
                 <img
@@ -74,7 +107,7 @@ const ResetPasswordPage = () => {
 
             {/* 3. AREA UTAMA KONTEN GRID */}
             <div className="flex-1 w-full max-w-[1440px] mx-auto px-6 lg:px-[100px] pt-4 lg:pt-0 pb-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10 relative">
-                
+
                 {/* Sisi Kiri: Teks Hero (col-span-4) */}
                 <div className="col-span-1 lg:col-span-4 flex flex-col justify-center min-h-[200px] lg:min-h-0 lg:pr-4 z-20">
                     <div className="z-10 text-white animate-fade-in-left space-y-4 lg:pl-4 max-w-sm">
@@ -91,7 +124,7 @@ const ResetPasswordPage = () => {
                 {/* Sisi Tengah: Formulir Reset Password (col-span-5, p-8 lg:p-9, min-h-[580px]) */}
                 <div className="col-span-1 lg:col-span-5 flex justify-center z-20 lg:pl-6">
                     <div className="w-full max-w-[450px] bg-white rounded-3xl shadow-[0_20px_50px_rgba(139,115,85,0.15)] border border-amber-100/40 p-8 lg:p-9 transform hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col justify-between min-h-[580px]">
-                        
+
                         <div>
                             {/* Header Form */}
                             <div className="text-center mb-5">

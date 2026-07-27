@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import api from '../../services/api';
 import {
     Home,
     TrendingUp,
@@ -20,7 +21,8 @@ import {
     ClipboardList,
     LogOut,
     ChevronDown,
-    Building2
+    Building2,
+    ShieldCheck
 } from "lucide-react";
 
 const ProfileDropdown = () => {
@@ -30,12 +32,62 @@ const ProfileDropdown = () => {
     const dropdownRef = useRef(null);
     const [avatarUrl, setAvatarUrl] = useState(null);
 
-    useEffect(() => {
-        if (user?.customer_profile?.foto_profil) {
-            setAvatarUrl(user.customer_profile.foto_profil);
-        } else if (user?.seller_profile?.foto_toko) {
-            setAvatarUrl(user.seller_profile.foto_toko);
+    // ─── State Indicator Badge Dinamis ────────────────────────────────────
+    const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+    const currentRole = user?.role || "customer";
+
+    // ─── Fetch Unread Counts ─────────────────────────────────────────────
+    const fetchUnreadCounts = useCallback(async () => {
+        if (!user) return;
+        try {
+            // Notifikasi Count
+            const notifRes = await api.get('/notifications/unread-count');
+            setUnreadNotifCount(notifRes.data?.count ?? 0);
+
+            // Chat Count (khusus role yang memiliki fitur chat)
+            if (currentRole === 'customer' || currentRole === 'seller') {
+                const chatRes = await api.get('/chat/conversations', { params: { per_page: 5 } });
+                const statsUnread = chatRes.data?.stats?.unread;
+                if (typeof statsUnread === 'number') {
+                    setUnreadChatCount(statsUnread);
+                } else {
+                    const convList = chatRes.data?.data?.data || chatRes.data?.data || [];
+                    const unreadSum = Array.isArray(convList) 
+                        ? convList.reduce((acc, c) => acc + (c.unread_count || 0), 0)
+                        : 0;
+                    setUnreadChatCount(unreadSum);
+                }
+            }
+        } catch {
+            // Failover silent
         }
+    }, [user, currentRole]);
+
+    useEffect(() => {
+        fetchUnreadCounts();
+
+        const handleUpdate = () => fetchUnreadCounts();
+        window.addEventListener('notifications-updated', handleUpdate);
+        window.addEventListener('new-notification', handleUpdate);
+        window.addEventListener('chat-updated', handleUpdate);
+
+        return () => {
+            window.removeEventListener('notifications-updated', handleUpdate);
+            window.removeEventListener('new-notification', handleUpdate);
+            window.removeEventListener('chat-updated', handleUpdate);
+        };
+    }, [fetchUnreadCounts]);
+
+    useEffect(() => {
+        const url = user?.avatar_url ||
+                    user?.profile?.foto_profil ||
+                    user?.profile?.foto_agen ||
+                    user?.customer_profile?.foto_profil ||
+                    user?.seller_profile?.foto_agen ||
+                    user?.seller_profile?.foto_toko;
+        setAvatarUrl(url || null);
     }, [user]);
 
     useEffect(() => {
@@ -63,63 +115,64 @@ const ProfileDropdown = () => {
 
     const menuItems = {
         customer: [
-            { label: 'Jual Propertimu', path: '/customer/become-seller', icon: Home },
-            { label: 'Statistik Properti', path: '/customer/become-seller', icon: TrendingUp },
+            { label: 'Dashboard', path: '/customer/dashboard', icon: LayoutDashboard },
             { label: 'Profil Saya', path: '/customer/profile', icon: User },
-            { label: 'Pesan', path: '/chat', icon: MessageSquare },
+            { label: 'Pesan', path: '/chat', icon: MessageSquare, badgeKey: 'chat' },
             { label: 'Properti Favorit', path: '/favorites', icon: Heart },
-            { label: 'Riwayat', path: '#', icon: Clock, disabled: true, soon: true },
-            { label: 'Notifikasi', path: '/notifications', icon: Bell },
-            { label: 'Pengaturan Akun', path: '#', icon: Settings, disabled: true, soon: true },
+            { label: 'Riwayat Pencarian', path: '/history', icon: Clock },
+            { label: 'Notifikasi', path: '/notifications', icon: Bell, badgeKey: 'notifications' },
+            { label: 'Pengaturan', path: '/settings', icon: Settings },
         ],
         seller: [
+            { label: 'Dashboard', path: '/seller/dashboard', icon: LayoutDashboard },
             { label: 'Jual Property', path: '/seller/properties', icon: Home },
-            { label: 'Statistik Properti', path: '/seller/stats', icon: TrendingUp },
-            { label: 'Dashboard Seller', path: '/seller/dashboard', icon: LayoutDashboard },
+            { label: 'Statistics', path: '/seller/stats', icon: TrendingUp },
             { label: 'Profil Saya', path: '/seller/profile', icon: User },
-            { label: 'Pesan', path: '/chat', icon: MessageSquare },
+            { label: 'Pesan', path: '/chat', icon: MessageSquare, badgeKey: 'chat' },
             { label: 'Properti Favorit', path: '/favorites', icon: Heart },
-            { label: 'Riwayat', path: '#', icon: Clock, disabled: true, soon: true },
-            { label: 'Notifikasi', path: '/notifications', icon: Bell },
-            { label: 'Profil Toko', path: '/seller/store', icon: Store },
-            { label: 'Pengaturan Akun', path: '#', icon: Settings, disabled: true, soon: true },
+            { label: 'Riwayat Pencarian', path: '/history', icon: Clock },
+            { label: 'Notifikasi', path: '/notifications', icon: Bell, badgeKey: 'notifications' },
+            { label: 'Profil Agen', path: '/seller/agen', icon: UserCheck },
+            { label: 'Pengaturan', path: '/settings', icon: Settings },
         ],
         admin: [
             { label: 'Dashboard Admin', path: '/admin/dashboard', icon: LayoutDashboard },
-            { label: 'Verifikasi Seller', path: '/admin/seller-verifications', icon: UserCheck },
-            { label: 'Moderasi Properti', path: '/admin/properties', icon: Building2 },
+            { label: 'Verifikasi Agen', path: '/admin/seller-verifications', icon: UserCheck },
+            { label: 'Verifikasi Properti', path: '/admin/properties', icon: Home },
+            { label: 'Data Properti', path: '/admin/all-properties', icon: Building2 },
             { label: 'Kelola User', path: '/admin/users', icon: Users },
             { label: 'Log Aktivitas', path: '/admin/activity-logs', icon: Activity },
-            { label: 'Notifikasi', path: '/notifications', icon: Bell },
-            { label: 'Kelola Laporan', path: '#', icon: Flag, disabled: true, soon: true },
+            { label: 'Notifikasi', path: '/notifications', icon: Bell, badgeKey: 'notifications' },
+            { label: 'Kelola Laporan', path: '/admin/reports', icon: Flag },
         ],
         super_admin: [
             { label: 'Dashboard Super', path: '/admin/dashboard', icon: LayoutDashboard },
-            { label: 'Verifikasi Seller', path: '/admin/seller-verifications', icon: UserCheck },
-            { label: 'Moderasi Properti', path: '/admin/properties', icon: Building2 },
+            { label: 'Kelola Admin', path: '/admin/admins', icon: UserCog },
+            { label: 'Review KTP', path: '/admin/ktp-reviews', icon: ShieldCheck },
+            { label: 'Verifikasi Agen', path: '/admin/seller-verifications', icon: UserCheck },
+            { label: 'Verifikasi Properti', path: '/admin/properties', icon: Home },
+            { label: 'Data Properti', path: '/admin/all-properties', icon: Building2 },
             { label: 'Kelola User', path: '/admin/users', icon: Users },
-            { label: 'Kelola Admin Lain', path: '/admin/admins', icon: UserCog },
-            { label: 'Log Aktivitas', path: '/admin/activity-logs', icon: Activity },
-            { label: 'Audit Log', path: '/admin/admins/audit-logs', icon: ClipboardList },
-            { label: 'Notifikasi', path: '/notifications', icon: Bell },
-            { label: 'Kelola Laporan', path: '#', icon: Flag, disabled: true, soon: true },
+            { label: 'Audit Log', path: '/admin/activity-logs', icon: ClipboardList },
+            { label: 'Notifikasi', path: '/notifications', icon: Bell, badgeKey: 'notifications' },
+            { label: 'Pengaturan', path: '/admin/settings', icon: Settings },
         ],
     };
 
     const items = menuItems[user?.role] || [];
-    const currentRole = user?.role || "customer";
+    const totalUnread = unreadNotifCount + unreadChatCount;
 
     return (
         <div className="relative select-none" ref={dropdownRef}>
-            {/* Tombol Profil (Trigger) - SUDAH DIPERBAIKI */}
+            {/* Tombol Profil (Trigger) */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
-                    group flex items-center gap-3 p-1.5 pr-4 rounded-full bg-white border transition-all duration-300 outline-none
+                    group flex items-center gap-3 p-1.5 pr-4 rounded-full bg-white border transition-all duration-300 outline-none relative
                     ${isOpen ? 'border-[#D4AD5D] shadow-md shadow-[#D4AD5D]/20 ring-4 ring-[#D4AD5D]/10' : 'border-[#f0ebe1] hover:border-[#D4AD5D]/50 hover:shadow-md'}
                 `}
             >
-                {/* Bagian Avatar */}
+                {/* Bagian Avatar + Indicator Badge Total Unread */}
                 <div className="relative shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AD5D] to-[#e6bd65] p-[2px] shadow-sm transition-transform duration-300 group-hover:scale-105">
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                         {avatarUrl ? (
@@ -130,6 +183,13 @@ const ProfileDropdown = () => {
                             </span>
                         )}
                     </div>
+
+                    {/* Badge Lingkaran Merah jika ada pesan/notifikasi masuk */}
+                    {totalUnread > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white shadow-sm ring-2 ring-white animate-pulse">
+                            {totalUnread > 9 ? '9+' : totalUnread}
+                        </span>
+                    )}
                 </div>
 
                 {/* Bagian Teks Nama & Role */}
@@ -178,6 +238,12 @@ const ProfileDropdown = () => {
                     <div className="py-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
                         {items.map((item, index) => {
                             const Icon = item.icon;
+                            const badgeCount = item.badgeKey === 'notifications' 
+                                ? unreadNotifCount 
+                                : item.badgeKey === 'chat' 
+                                ? unreadChatCount 
+                                : 0;
+
                             return (
                                 <Link
                                     key={index}
@@ -205,6 +271,14 @@ const ProfileDropdown = () => {
                                         />
                                         <span className="text-[13px] font-medium">{item.label}</span>
                                     </div>
+
+                                    {/* Badge Indikator Unread */}
+                                    {badgeCount > 0 && (
+                                        <span className="text-[10px] font-bold rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center bg-red-500 text-white animate-pulse shadow-sm shadow-red-500/40">
+                                            {badgeCount > 99 ? '99+' : badgeCount}
+                                        </span>
+                                    )}
+
                                     {item.soon && (
                                         <span className="text-[9px] font-bold bg-[#f0ebe1] text-gray-500 px-2 py-0.5 rounded-md tracking-wider">
                                             SOON

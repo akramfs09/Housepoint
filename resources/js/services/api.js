@@ -1,7 +1,22 @@
 import axios from 'axios';
 
+const getBaseURL = () => {
+    if (import.meta.env.VITE_API_BASE_URL) {
+        return import.meta.env.VITE_API_BASE_URL;
+    }
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+    return `${window.location.origin}/api`;
+};
+
+const getCSRFURL = () => {
+    const base = getBaseURL();
+    return base.replace(/\/api$/, '/sanctum/csrf-cookie');
+};
+
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: getBaseURL(),
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -19,7 +34,7 @@ api.interceptors.request.use((config) => {
     // CSRF (opsional, tidak wajib untuk token-based)
     if (['post', 'put', 'delete', 'patch'].includes(config.method)) {
         if (!document.cookie.includes('XSRF-TOKEN')) {
-            return axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+            return axios.get(getCSRFURL(), {
                 withCredentials: true,
             }).then(() => config);
         }
@@ -39,7 +54,7 @@ api.interceptors.response.use(
         // 419 CSRF token mismatch → refresh & retry
         if (status === 419 && !isRefreshing) {
             isRefreshing = true;
-            await axios.get('http://localhost:8000/sanctum/csrf-cookie', {
+            await axios.get(getCSRFURL(), {
                 withCredentials: true,
             });
             isRefreshing = false;
@@ -120,6 +135,11 @@ export const deleteProperty = (id) => {
 // Ajukan properti ke moderasi (draft → pending)
 export const submitProperty = (id) => {
     return api.patch(`/properties/${id}/submit`);
+};
+
+// Toggle status jual properti (dijual <-> terjual)
+export const toggleStatusJual = (id) => {
+    return api.patch(`/seller/properties/${id}/toggle-status-jual`);
 };
 
 // ==========================================

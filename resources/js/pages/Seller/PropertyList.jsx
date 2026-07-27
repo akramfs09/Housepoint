@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fetchMyProperties, fetchMyProperty, deleteProperty, submitProperty, createProperty, updateProperty } from '../../services/api';
+import { fetchMyProperties, fetchMyProperty, deleteProperty, submitProperty, createProperty, updateProperty, toggleStatusJual } from '../../services/api';
 import PropertyCard from '../../components/common/PropertyCard';
 import ProvinceCitySelect from '../../components/common/ProvinceCitySelect';
 import DragDropUpload from '../../components/common/DragDropUpload';
@@ -29,6 +29,12 @@ const FASILITAS_LIST = [
     { key: 'water_heater', label: 'Water Heater' },
 ];
 
+const formatRupiahInput = (val) => {
+    if (!val && val !== 0) return '';
+    const cleanNumber = val.toString().replace(/[^0-9]/g, '');
+    return cleanNumber ? Number(cleanNumber).toLocaleString('id-ID') : '';
+};
+
 const PropertyList = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -39,8 +45,15 @@ const PropertyList = () => {
     const [loading, setLoading] = useState(true);
     const [editLoading, setEditLoading] = useState(false);
     const [statusFilter, setStatusFilter] = useState('');
+    const [featuredProperty, setFeaturedProperty] = useState(null);
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState(null);
+
+    const handlePriceChange = (e) => {
+        const rawValue = e.target.value.replace(/[^0-9]/g, '');
+        setForm(prev => ({ ...prev, price: rawValue }));
+        setErrors(prev => ({ ...prev, price: null }));
+    };
     const [counts, setCounts] = useState({ draft: 0, pending: 0 });
     const [featuredModal, setFeaturedModal] = useState(null);
     const [editingProperty, setEditingProperty] = useState(null);
@@ -185,6 +198,15 @@ const PropertyList = () => {
             case 'featured':
                 const prop = properties.find(p => p.id === propertyId);
                 if (prop) setFeaturedModal(prop);
+                break;
+            case 'toggle_status_jual':
+                try {
+                    const { data } = await toggleStatusJual(propertyId);
+                    toast.success(data.message || 'Status jual berhasil diperbarui.');
+                    loadProperties();
+                } catch (error) {
+                    toast.error(error.response?.data?.message || 'Gagal mengubah status jual.');
+                }
                 break;
             default:
                 break;
@@ -465,8 +487,23 @@ const PropertyList = () => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Harga Nominal (Rp) <span className="text-red-500">*</span></label>
-                                        <input type="number" name="price" value={form.price} onChange={handleFormChange}
-                                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#d49b37]/20 focus:border-[#d49b37] transition" placeholder="Masukkan nominal angka saja" required min={1} />
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-500">Rp</span>
+                                            <input 
+                                                type="text" 
+                                                name="price" 
+                                                value={formatRupiahInput(form.price)} 
+                                                onChange={handlePriceChange}
+                                                className="w-full border border-gray-300 rounded-xl pl-11 pr-4 py-2.5 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d49b37]/20 focus:border-[#d49b37] transition" 
+                                                placeholder="Contoh: 1.500.000.000" 
+                                                required 
+                                            />
+                                        </div>
+                                        {form.price ? (
+                                            <p className="text-xs font-medium text-[#d49b37] mt-1.5 flex items-center gap-1">
+                                                <span>✨</span> Terbaca: <strong>Rp {formatRupiahInput(form.price)}</strong>
+                                            </p>
+                                        ) : null}
                                         {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price[0]}</p>}
                                     </div>
                                     <div>

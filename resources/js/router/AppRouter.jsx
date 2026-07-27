@@ -181,21 +181,21 @@ const AppRouter = () => (
         } />
         <Route path="/admin/seller-verifications" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-                <DashboardLayout pageTitle="✅ Verifikasi Seller" pageDescription="Approve atau tolak pengajuan seller">
+                <DashboardLayout pageTitle="Verifikasi Seller" pageDescription="Approve atau tolak pengajuan seller">
                     <SellerVerifications />
                 </DashboardLayout>
             </ProtectedRoute>
         } />
         <Route path="/admin/properties" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-                <DashboardLayout pageTitle="🏠 Moderasi Properti" pageDescription="Setujui atau tolak properti yang diajukan">
+                <DashboardLayout pageTitle="Moderasi Properti" pageDescription="Setujui atau tolak properti yang diajukan">
                     <PropertyVerifications />
                 </DashboardLayout>
             </ProtectedRoute>
         } />
         <Route path="/admin/users" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-                <DashboardLayout pageTitle="👥 Kelola User" pageDescription="Kelola semua pengguna HousePoint">
+                <DashboardLayout pageTitle="Kelola User" pageDescription="Kelola semua pengguna HousePoint">
                     <ManageUsers />
                 </DashboardLayout>
             </ProtectedRoute>
@@ -209,7 +209,7 @@ const AppRouter = () => (
         } />
         <Route path="/admin/activity-logs" element={
             <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
-                <DashboardLayout pageTitle="📋 Log Aktivitas" pageDescription="Riwayat aktivitas admin">
+                <DashboardLayout pageTitle="Log Aktivitas" pageDescription="Riwayat aktivitas admin">
                     <ActivityLogs />
                 </DashboardLayout>
             </ProtectedRoute>
@@ -234,7 +234,7 @@ const AppRouter = () => (
         {/* ========================================== */}
         <Route path="/admin/admins" element={
             <ProtectedRoute allowedRoles={['super_admin']}>
-                <DashboardLayout pageTitle="👤 Kelola Admin Lain" pageDescription="Kelola semua admin HousePoint">
+                <DashboardLayout pageTitle="Kelola Admin Lain" pageDescription="Kelola semua admin HousePoint">
                     <ManageAdmins />
                 </DashboardLayout>
             </ProtectedRoute>

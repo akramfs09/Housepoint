@@ -26,7 +26,7 @@ Route::get('/storage/public/{path}', function ($path) {
 
 // Route khusus untuk API auth redirect (fallback)
 Route::get('/login', function () {
-    return response()->json(['success' => false, 'message' => 'Unauthorized.'], 401);
+    return view('welcome');
 })->name('login');
 
 // Tangkap SEMUA URL lainnya dan kembalikan view React

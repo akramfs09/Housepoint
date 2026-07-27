@@ -19,15 +19,27 @@ import {
     Clock, 
     Coins, 
     Sparkles,
-    Lock
+    Lock,
+    CheckCircle2,
+    Tag
 } from 'lucide-react';
 
 const STATUS_BADGE = {
     draft: { color: 'bg-gray-400', label: 'Draft' },
     pending: { color: 'bg-amber-500', label: 'Menunggu Moderasi' },
     approved: { color: 'bg-emerald-600', label: 'Menunggu Pembayaran' },
-    published: { color: 'bg-[#d49b37]', label: 'TERSEDIA' },
+    published: { color: 'bg-emerald-600', label: 'DIJUAL' },
     rejected: { color: 'bg-red-500', label: 'Ditolak' },
+};
+
+const getPropertyBadge = (property) => {
+    if (property.status === 'published') {
+        if (property.status_jual === 'terjual') {
+            return { color: 'bg-red-600', label: 'TERJUAL' };
+        }
+        return { color: 'bg-emerald-600', label: 'DIJUAL' };
+    }
+    return STATUS_BADGE[property.status] || { color: 'bg-emerald-600', label: 'DIJUAL' };
 };
 
 const TYPE_LABEL = {
@@ -50,7 +62,7 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
     const isSeller = mode === 'seller';
     const isPublic = mode === 'public';
     const canUseFavorite = !user || user.role === 'customer' || user.role === 'seller';
-    const badge = STATUS_BADGE[property.status] || STATUS_BADGE.published;
+    const badge = getPropertyBadge(property);
 
     // State favorit
     const [isFavorited, setIsFavorited] = useState(property.is_favorited ?? false);
@@ -149,8 +161,10 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                         />
                     </LinkedContent>
 
-                    <div className="absolute left-3 top-3 rounded-md bg-[#d9a441] px-3 py-1.5 text-[10px] font-bold tracking-wide leading-none text-white shadow-sm uppercase">
-                        RENT
+                    <div className={`absolute left-3 top-3 rounded-md px-3 py-1.5 text-[10px] font-bold tracking-wide leading-none text-white shadow-sm uppercase ${
+                        property.status_jual === 'terjual' ? 'bg-red-600' : 'bg-[#d9a441]'
+                    }`}>
+                        {property.status_jual === 'terjual' ? 'TERJUAL' : 'DIJUAL'}
                     </div>
 
                     {property.status === 'published' && canUseFavorite && (
@@ -274,19 +288,34 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                         {property.status === 'draft' && (
                             <>
                                 <button
-                                    onClick={() => onAction?.('edit', property.id)}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onAction?.('edit', property.id);
+                                    }}
                                     className="flex items-center gap-1.5 bg-[#c08a2c] text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-[#a37222] transition"
                                 >
                                     <Pencil className="w-3.5 h-3.5" /> Edit
                                 </button>
                                 <button
-                                    onClick={() => onAction?.('submit', property.id)}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onAction?.('submit', property.id);
+                                    }}
                                     className="flex items-center gap-1.5 bg-amber-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-amber-600 transition"
                                 >
                                     <UploadCloud className="w-3.5 h-3.5" /> Ajukan
                                 </button>
                                 <button
-                                    onClick={() => onAction?.('delete', property.id)}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onAction?.('delete', property.id);
+                                    }}
                                     className="flex items-center gap-1.5 bg-red-500 text-white px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-red-600 transition"
                                 >
                                     <Trash2 className="w-3.5 h-3.5" /> Hapus
@@ -304,7 +333,12 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                         {/* Approved */}
                         {property.status === 'approved' && (
                             <button
-                                onClick={() => onAction?.('pay', property.id)}
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onAction?.('pay', property.id);
+                                }}
                                 className="w-full flex items-center justify-center gap-2 bg-emerald-600 text-white py-2 rounded-lg text-[14px] font-bold hover:bg-emerald-700 transition shadow-sm"
                             >
                                 <Coins className="w-4 h-4" /> Bayar Sekarang
@@ -324,7 +358,12 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                                 </a>
                                 {bisaEdit ? (
                                     <button
-                                        onClick={() => onAction?.('edit', property.id)}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onAction?.('edit', property.id);
+                                        }}
                                         className="flex items-center justify-center gap-2 w-full bg-[#c08a2c] text-white py-2 rounded-lg text-[13px] font-medium hover:bg-[#a37222] transition"
                                     >
                                         <Pencil className="w-4 h-4" /> Edit (sisa {sisaEdit}x)
@@ -335,6 +374,32 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                                     </span>
                                 )}
                                 
+                                {property.status_jual === 'terjual' ? (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onAction?.('toggle_status_jual', property.id);
+                                        }}
+                                        className="flex items-center justify-center gap-2 w-full bg-emerald-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-emerald-700 transition"
+                                    >
+                                        <Tag className="w-4 h-4" /> Ubah ke "Dijual"
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onAction?.('toggle_status_jual', property.id);
+                                        }}
+                                        className="flex items-center justify-center gap-2 w-full bg-red-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-red-700 transition"
+                                    >
+                                        <CheckCircle2 className="w-4 h-4" /> Tandai "Terjual"
+                                    </button>
+                                )}
+
                                 {/* Status Unggulan / Tombol Upgrade (Tema Emas Premium) */}
                                 {property.featured_status ? (
                                     <div className="flex items-center justify-center gap-1.5 w-full bg-amber-50 border border-amber-200 text-amber-800 py-2 px-3 rounded-lg text-[13px] font-medium text-center">
@@ -346,7 +411,12 @@ const PropertyCard = ({ property, mode = 'public', onAction, onFavoriteChange })
                                     </div>
                                 ) : (
                                     <button
-                                        onClick={() => onAction?.('featured', property.id)}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onAction?.('featured', property.id);
+                                        }}
                                         className="flex items-center justify-center gap-2 w-full bg-amber-600 text-white py-2 rounded-lg text-[13px] font-medium hover:bg-amber-700 transition"
                                     >
                                         <Sparkles className="w-4 h-4" /> Upgrade ke Unggulan

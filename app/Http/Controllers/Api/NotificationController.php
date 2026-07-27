@@ -63,4 +63,31 @@ class NotificationController extends Controller
             'count' => request()->user()->unreadNotifications()->count(),
         ]);
     }
+
+    public function destroy($id)
+    {
+        $notification = request()->user()->notifications()->findOrFail($id);
+        $notification->delete();
+
+        return $this->success(null, 'Notifikasi berhasil dihapus.');
+    }
+
+    public function destroyBatch(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'string',
+        ]);
+
+        request()->user()->notifications()->whereIn('id', $request->ids)->delete();
+
+        return $this->success(null, 'Notifikasi terpilih berhasil dihapus.');
+    }
+
+    public function destroyAll()
+    {
+        request()->user()->notifications()->delete();
+
+        return $this->success(null, 'Semua notifikasi berhasil dihapus.');
+    }
 }

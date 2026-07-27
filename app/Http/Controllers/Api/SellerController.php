@@ -197,6 +197,24 @@ class SellerController extends Controller
         return $this->success(null, 'Properti berhasil dihapus.');
     }
 
+    public function toggleStatusJual(Request $request, Property $property)
+    {
+        $seller = $request->user()->sellerProfile;
+        if (!$seller || $property->seller_id !== $seller->id) {
+            return $this->error('Anda tidak memiliki akses ke properti ini.', 403);
+        }
+
+        if ($property->status !== 'published') {
+            return $this->error('Hanya properti yang dipublikasikan yang dapat diubah status jualnya.', 400);
+        }
+
+        $newStatusJual = $property->status_jual === 'terjual' ? 'dijual' : 'terjual';
+        $property->update(['status_jual' => $newStatusJual]);
+
+        $statusText = $newStatusJual === 'terjual' ? 'TERJUAL' : 'DIJUAL';
+        return $this->success(new PropertyResource($property), "Status properti berhasil diubah menjadi {$statusText}.");
+    }
+
     public function submit(Property $property)
     {
         $this->authorize('submit', $property);

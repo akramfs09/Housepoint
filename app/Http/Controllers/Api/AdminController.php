@@ -24,6 +24,7 @@ use App\Notifications\PropertyModerationNotification;
 use App\Notifications\AppealNotification;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
 {
@@ -386,7 +387,15 @@ class AdminController extends Controller
         if (!in_array($user->role?->nama_role, ['super_admin'])) {
             $query->where('actor_id', $user->id);
         } elseif ($request->filled('actor_id')) {
-            $query->where('actor_id', $request->actor_id);
+            $actorInput = trim($request->actor_id);
+            if (is_numeric($actorInput)) {
+                $query->where('actor_id', $actorInput);
+            } else {
+                $query->whereHas('actor', function ($q) use ($actorInput) {
+                    $q->where(DB::raw('LOWER(name)'), 'like', '%' . strtolower($actorInput) . '%')
+                      ->orWhere(DB::raw('LOWER(email)'), 'like', '%' . strtolower($actorInput) . '%');
+                });
+            }
         }
 
         // Filter tanggal
@@ -406,12 +415,16 @@ class AdminController extends Controller
             $query->whereIn('action', $actions);
         }
 
-        // Pencarian
+        // Pencarian case-insensitive (bebas kapital/kecil) pada aksi, metadata, maupun akun admin (actor)
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = strtolower(trim($request->search));
             $query->where(function ($q) use ($search) {
-                $q->where('action', 'like', '%' . $search . '%')
-                  ->orWhere('metadata', 'like', '%' . $search . '%');
+                $q->where(DB::raw('LOWER(action)'), 'like', '%' . $search . '%')
+                  ->orWhere(DB::raw('LOWER(metadata)'), 'like', '%' . $search . '%')
+                  ->orWhereHas('actor', function ($aq) use ($search) {
+                      $aq->where(DB::raw('LOWER(name)'), 'like', '%' . $search . '%')
+                         ->orWhere(DB::raw('LOWER(email)'), 'like', '%' . $search . '%');
+                  });
             });
         }
 

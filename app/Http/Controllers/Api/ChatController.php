@@ -43,10 +43,13 @@ class ChatController extends Controller
                 ['user_id' => $seller->id],
             ]);
         } else {
-            // Jika sudah ada tapi user pengirim pernah mengarsipkan, aktifkan kembali
+            // Jika pernah diarsipkan atau dihapus, aktifkan kembali untuk buyer
             $participant = $conversation->participants()->where('user_id', $buyer->id)->first();
-            if ($participant && $participant->archived_at) {
-                $participant->update(['archived_at' => null]);
+            if ($participant) {
+                $participant->update([
+                    'archived_at' => null,
+                    'deleted_at' => null
+                ]);
             }
         }
 
@@ -65,6 +68,13 @@ class ChatController extends Controller
             } else {
                 $q->whereNull('archived_at');
             }
+            // Filter: deleted_at IS NULL ATAU ada pesan baru setelah deleted_at
+            $q->where(function ($sub) {
+                $sub->whereNull('deleted_at')
+                    ->orWhereHas('conversation.messages', function ($m) {
+                        $m->whereColumn('messages.created_at', '>', 'participants.deleted_at');
+                    });
+            });
         });
 
         if ($search = $request->search) {
@@ -78,12 +88,32 @@ class ChatController extends Controller
             ->with(['participants.user.customerProfile', 'participants.user.sellerProfile', 'property:id,title,slug', 'latestMessage'])
             ->orderByDesc(Message::select('created_at')->whereColumn('conversation_id', 'conversations.id')->latest()->take(1))
             ->get()
+            ->filter(function ($conv) use ($user) {
+                $myPart = $conv->participants->firstWhere('user_id', $user->id);
+                if ($myPart && $myPart->deleted_at) {
+                    // Jika dihapus, pastikan ada minimal 1 pesan setelah deleted_at
+                    $hasNewerMsg = $conv->messages()->where('created_at', '>', $myPart->deleted_at)->exists();
+                    return $hasNewerMsg;
+                }
+                return true;
+            })
             ->map(function ($conv) use ($user) {
+                $myPart = $conv->participants->firstWhere('user_id', $user->id);
                 $other = $conv->participants->firstWhere('user_id', '!=', $user->id)?->user;
-                $unreadCount = $conv->messages()
-                    ->where('user_id', '!=', $user->id)
-                    ->whereNull('read_at')
-                    ->count();
+
+                $msgQuery = $conv->messages()->where('user_id', '!=', $user->id)->whereNull('read_at');
+                if ($myPart && $myPart->deleted_at) {
+                    $msgQuery->where('created_at', '>', $myPart->deleted_at);
+                }
+                $unreadCount = $msgQuery->count();
+
+                // Dapatkan pesan terbaru (apakah dibatasi oleh deleted_at)
+                $latestMsgQuery = $conv->messages();
+                if ($myPart && $myPart->deleted_at) {
+                    $latestMsgQuery->where('created_at', '>', $myPart->deleted_at);
+                }
+                $latestMsg = $latestMsgQuery->latest()->first();
+
                 $conv->other_user = $other ? [
                     'id' => $other->id,
                     'name' => $other->name,
@@ -91,15 +121,31 @@ class ChatController extends Controller
                     'avatar_url' => $other->avatar_url,
                 ] : null;
                 $conv->unread_count = $unreadCount;
-                $conv->is_archived = $conv->participants->firstWhere('user_id', $user->id)->archived_at !== null;
+                $conv->is_archived = $myPart?->archived_at !== null;
+                $conv->latest_message = $latestMsg;
                 return $conv;
-            });
+            })
+            ->values();
 
-        $total = Conversation::whereHas('participants', fn($q) => $q->where('user_id', $user->id)->whereNull('archived_at'))->count();
-        $archivedCount = Conversation::whereHas('participants', fn($q) => $q->where('user_id', $user->id)->whereNotNull('archived_at'))->count();
-        $unreadTotal = Message::whereIn('conversation_id', 
-                Conversation::whereHas('participants', fn($q) => $q->where('user_id', $user->id)->whereNull('archived_at'))->pluck('id')
-            )
+        $totalQuery = Conversation::whereHas('participants', function ($q) use ($user) {
+            $q->where('user_id', $user->id)->whereNull('archived_at')
+              ->where(function ($sub) {
+                  $sub->whereNull('deleted_at')
+                      ->orWhereHas('conversation.messages', fn($m) => $m->whereColumn('messages.created_at', '>', 'participants.deleted_at'));
+              });
+        });
+        $total = $totalQuery->count();
+
+        $archivedQuery = Conversation::whereHas('participants', function ($q) use ($user) {
+            $q->where('user_id', $user->id)->whereNotNull('archived_at')
+              ->where(function ($sub) {
+                  $sub->whereNull('deleted_at')
+                      ->orWhereHas('conversation.messages', fn($m) => $m->whereColumn('messages.created_at', '>', 'participants.deleted_at'));
+              });
+        });
+        $archivedCount = $archivedQuery->count();
+
+        $unreadTotal = Message::whereIn('conversation_id', $conversations->pluck('id'))
             ->where('user_id', '!=', $user->id)
             ->whereNull('read_at')
             ->count();
@@ -117,7 +163,16 @@ class ChatController extends Controller
     public function messages(Conversation $conversation)
     {
         $this->authorize('view', $conversation);
-        $messages = $conversation->messages()
+        $user = Auth::user();
+        $participant = $conversation->participants()->where('user_id', $user->id)->first();
+
+        $query = $conversation->messages();
+
+        if ($participant && $participant->deleted_at) {
+            $query->where('created_at', '>=', $participant->deleted_at);
+        }
+
+        $messages = $query
             ->with(['user.customerProfile', 'user.sellerProfile'])
             ->orderBy('created_at')
             ->paginate(30);
@@ -129,6 +184,12 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
         $request->validate(['body' => 'required|string|max:2000']);
+
+        // Jika pengirim pernah menghapus percakapan sebelumnya, reset deleted_at pengirim
+        $myPart = $conversation->participants()->where('user_id', Auth::id())->first();
+        if ($myPart && $myPart->deleted_at) {
+            $myPart->update(['deleted_at' => null]);
+        }
 
         $message = $conversation->messages()->create([
             'user_id' => Auth::id(),
@@ -162,15 +223,20 @@ class ChatController extends Controller
     {
         $this->authorize('view', $conversation);
         $user = Auth::user();
-        
-        $unreadMessages = $conversation->messages()
+        $participant = $conversation->participants()->where('user_id', $user->id)->first();
+
+        $query = $conversation->messages()
             ->where('user_id', '!=', $user->id)
-            ->whereNull('read_at')
-            ->get();
+            ->whereNull('read_at');
+
+        if ($participant && $participant->deleted_at) {
+            $query->where('created_at', '>=', $participant->deleted_at);
+        }
+
+        $unreadMessages = $query->get();
 
         if ($unreadMessages->isNotEmpty()) {
             Message::whereIn('id', $unreadMessages->pluck('id'))->update(['read_at' => now()]);
-            // Broadcast read receipt
             foreach ($unreadMessages as $msg) {
                 broadcast(new MessageRead($msg, $user->id))->toOthers();
             }
@@ -195,5 +261,14 @@ class ChatController extends Controller
         $participant->update(['archived_at' => null]);
 
         return response()->json(['success' => true]);
+    }
+
+    public function destroy(Conversation $conversation)
+    {
+        $this->authorize('view', $conversation);
+        $participant = $conversation->participants()->where('user_id', Auth::id())->firstOrFail();
+        $participant->update(['deleted_at' => now()]);
+
+        return response()->json(['success' => true, 'message' => 'Percakapan berhasil dihapus.']);
     }
 }

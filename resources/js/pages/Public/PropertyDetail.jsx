@@ -4,6 +4,7 @@ import { fetchPublicPropertyDetail } from '../../services/api';
 import api from '../../services/api';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import ShareModal from '../../components/common/ShareModal';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from 'react-hot-toast';
 
@@ -37,6 +38,29 @@ const PropertyDetail = () => {
     const [isFavorited, setIsFavorited] = useState(false);
     const [favoriteLoading, setFavoriteLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('Detail');
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+    const handleShareClick = async () => {
+        const shareUrl = window.location.href;
+        const formattedPrice = property?.price 
+            ? `Rp ${Number(property.price).toLocaleString('id-ID', { maximumFractionDigits: 0 })}` 
+            : '';
+        const shareText = `Halo! Cek properti "${property?.title || 'ini'}" (${formattedPrice}) di HousePoint:`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: property?.title || 'Detail Properti',
+                    text: shareText,
+                    url: shareUrl,
+                });
+                return;
+            } catch {
+                // User membatal share native atau error -> tampilkan custom ShareModal
+            }
+        }
+        setIsShareModalOpen(true);
+    };
 
     useEffect(() => {
         const loadData = async () => {
@@ -444,7 +468,7 @@ const PropertyDetail = () => {
                                 <a href={`mailto:${sellerEmail}`} className="bg-white border border-[#D3C4B2] hover:bg-[#FDF5E2] text-[#595959] py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                                     <IconMail /> Email
                                 </a>
-                                <button onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link tersalin!'); }} className="bg-white border border-[#D3C4B2] hover:bg-[#FDF5E2] text-[#595959] py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                                <button type="button" onClick={handleShareClick} className="bg-white border border-[#D3C4B2] hover:bg-[#FDF5E2] text-[#595959] py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2">
                                     <IconShare /> Bagikan
                                 </button>
                             </div>
@@ -528,6 +552,7 @@ const PropertyDetail = () => {
             </div>
             
             <div className="h-16"></div>
+            <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} property={property} />
             <Footer />
         </div>
     );

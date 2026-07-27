@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "../../services/api";
 import {
     User,
     Camera,
@@ -15,13 +16,13 @@ import {
     Clock,
     Bell,
     LayoutDashboard,
-    Store,
     UserCheck,
     Users,
     Activity,
     Flag,
     UserCog,
-    ClipboardList
+    ClipboardList,
+    ShieldCheck
 } from "lucide-react";
 
 const Sidebar = () => {
@@ -30,14 +31,61 @@ const Sidebar = () => {
     const location = useLocation();
     const [avatarUrl, setAvatarUrl] = useState(null);
 
+    // ─── State Indicator Badge Dinamis ────────────────────────────────────
+    const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+
     const currentRole = user?.role || "customer"; 
 
-    useEffect(() => {
-        if (user?.customer_profile?.foto_profil) {
-            setAvatarUrl(user.customer_profile.foto_profil);
-        } else if (user?.seller_profile?.foto_toko) {
-            setAvatarUrl(user.seller_profile.foto_toko);
+    // ─── Fetch Unread Counts ─────────────────────────────────────────────
+    const fetchUnreadCounts = useCallback(async () => {
+        try {
+            // Notifikasi Count
+            const notifRes = await api.get('/notifications/unread-count');
+            setUnreadNotifCount(notifRes.data?.count ?? 0);
+
+            // Chat Count (khusus role yang memiliki fitur chat)
+            if (currentRole === 'customer' || currentRole === 'seller') {
+                const chatRes = await api.get('/chat/conversations', { params: { per_page: 5 } });
+                const statsUnread = chatRes.data?.stats?.unread;
+                if (typeof statsUnread === 'number') {
+                    setUnreadChatCount(statsUnread);
+                } else {
+                    const convList = chatRes.data?.data?.data || chatRes.data?.data || [];
+                    const unreadSum = Array.isArray(convList) 
+                        ? convList.reduce((acc, c) => acc + (c.unread_count || 0), 0)
+                        : 0;
+                    setUnreadChatCount(unreadSum);
+                }
+            }
+        } catch {
+            // Failover silent
         }
+    }, [currentRole]);
+
+    useEffect(() => {
+        fetchUnreadCounts();
+
+        const handleUpdate = () => fetchUnreadCounts();
+        window.addEventListener('notifications-updated', handleUpdate);
+        window.addEventListener('new-notification', handleUpdate);
+        window.addEventListener('chat-updated', handleUpdate);
+
+        return () => {
+            window.removeEventListener('notifications-updated', handleUpdate);
+            window.removeEventListener('new-notification', handleUpdate);
+            window.removeEventListener('chat-updated', handleUpdate);
+        };
+    }, [fetchUnreadCounts]);
+
+    useEffect(() => {
+        const url = user?.avatar_url ||
+                    user?.profile?.foto_profil ||
+                    user?.profile?.foto_agen ||
+                    user?.customer_profile?.foto_profil ||
+                    user?.seller_profile?.foto_agen ||
+                    user?.seller_profile?.foto_toko;
+        setAvatarUrl(url || null);
     }, [user]);
 
     const handleLogout = async () => {
@@ -64,15 +112,22 @@ const Sidebar = () => {
         return location.pathname === path;
     };
 
-    // ─── Menu Item Component (Dilengkapi Animasi) ────────────────────────
+    // ─── Menu Item Component ──────────────────────────────────────────────
     const MenuItem = ({
         icon: Icon,
         title,
         path,
         locked = false,
-        badge = null,
+        badgeKey = null, // 'notifications' | 'chat' | null
     }) => {
         const active = isActive(path);
+        
+        // Ambil jumlah unread secara dinamis berdasarkan badgeKey
+        const badgeCount = badgeKey === 'notifications' 
+            ? unreadNotifCount 
+            : badgeKey === 'chat' 
+            ? unreadChatCount 
+            : 0;
 
         const handleClick = (e) => {
             if (path === "#" || locked) {
@@ -118,13 +173,13 @@ const Sidebar = () => {
                     </span>
                 </div>
 
-                {/* Badge & Lock Icon (Geser berlawanan saat hover) */}
+                {/* Badge Lingkaran Merah & Lock Icon */}
                 <div className="flex items-center gap-2 transform transition-transform duration-300 group-hover:-translate-x-1 z-10">
-                    {badge && badge > 0 && (
+                    {badgeCount > 0 && (
                         <span className={`text-[10px] font-bold rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center shadow-sm transition-all duration-300 ${
                             active ? "bg-white text-[#D4AD5D]" : "bg-red-500 text-white animate-pulse shadow-red-500/40"
                         }`}>
-                            {badge > 99 ? "99+" : badge}
+                            {badgeCount > 99 ? "99+" : badgeCount}
                         </span>
                     )}
                     {locked && <Lock size={14} className="text-gray-400 group-hover:text-[#D4AD5D] transition-colors" />}
@@ -144,10 +199,10 @@ const Sidebar = () => {
             return [
                 { title: "Dashboard", icon: LayoutDashboard, path: "/customer/dashboard" },
                 { title: "Profil Saya", icon: User, path: "/customer/profile" },
-                { title: "Pesan", icon: MessageSquare, path: "/chat" },
+                { title: "Pesan", icon: MessageSquare, path: "/chat", badgeKey: "chat" },
                 { title: "Properti Favorit", icon: Heart, path: "/favorites" },
                 { title: "Riwayat Pencarian", icon: Clock, path: "/history" },
-                { title: "Notifikasi", icon: Bell, path: "/notifications" },
+                { title: "Notifikasi", icon: Bell, path: "/notifications", badgeKey: "notifications" },
             ];
         }
         if (currentRole === "seller") {
@@ -156,11 +211,11 @@ const Sidebar = () => {
                 { title: "Jual Property", icon: Home, path: "/seller/properties" },
                 { title: "Statistics", icon: TrendingUp, path: "/seller/stats" },
                 { title: "Profil Saya", icon: User, path: "/seller/profile" },
-                { title: "Pesan", icon: MessageSquare, path: "/chat", badge: 2 },
+                { title: "Pesan", icon: MessageSquare, path: "/chat", badgeKey: "chat" },
                 { title: "Properti Favorit", icon: Heart, path: "/favorites" },
                 { title: "Riwayat Pencarian", icon: Clock, path: "/history" },
-                { title: "Notifikasi", icon: Bell, path: "/notifications" },
-                { title: "Profil Toko", icon: Store, path: "/seller/store" },
+                { title: "Notifikasi", icon: Bell, path: "/notifications", badgeKey: "notifications" },
+                { title: "Profil Agen", icon: UserCheck, path: "/seller/agen" },
             ];
         }
         if (currentRole === "admin") {
@@ -171,7 +226,7 @@ const Sidebar = () => {
                 { title: "Data Properti", icon: Building2, path: "/admin/all-properties" },
                 { title: "Kelola User", icon: Users, path: "/admin/users" },
                 { title: "Log Aktivitas", icon: Activity, path: "/admin/activity-logs" },
-                { title: "Notifikasi", icon: Bell, path: "/notifications" },
+                { title: "Notifikasi", icon: Bell, path: "/notifications", badgeKey: "notifications" },
                 { title: "Kelola Laporan", icon: Flag, path: "/admin/reports" },
             ];
         }
@@ -179,12 +234,13 @@ const Sidebar = () => {
             return [
                 { title: "Dashboard Super", icon: LayoutDashboard, path: "/admin/dashboard" },
                 { title: "Kelola Admin", icon: UserCog, path: "/admin/admins" },
+                { title: "Review KTP", icon: ShieldCheck, path: "/admin/ktp-reviews" },
                 { title: "Verifikasi Agen", icon: UserCheck, path: "/admin/seller-verifications" },
                 { title: "Verifikasi Properti", icon: Home, path: "/admin/properties" },
                 { title: "Data Properti", icon: Building2, path: "/admin/all-properties" },
                 { title: "Kelola User", icon: Users, path: "/admin/users" },
                 { title: "Audit Log", icon: ClipboardList, path: "/admin/activity-logs" },
-                { title: "Notifikasi", icon: Bell, path: "/notifications" },
+                { title: "Notifikasi", icon: Bell, path: "/notifications", badgeKey: "notifications" },
             ];
         }
         return [];
@@ -195,9 +251,6 @@ const Sidebar = () => {
     // ─── Main Render ─────────────────────────────────────────────────────
     return (
         <div className="space-y-4 sticky top-24 select-none w-full max-w-[280px]">
-            
-         
-
             {/* CARD 1: Profile Block */}
             <div className="bg-white rounded-[20px] shadow-sm hover:shadow-xl hover:shadow-[#D4AD5D]/10 hover:-translate-y-1 transition-all duration-500 border border-[#f0ebe1] p-6 text-center relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-[#D4AD5D]/10 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2 group-hover:bg-[#D4AD5D]/20 transition-all duration-500" />

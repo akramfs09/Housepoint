@@ -33,7 +33,18 @@ const ActivityLogs = () => {
     const [dateTo, setDateTo] = useState('');
     const [selectedAction, setSelectedAction] = useState('');
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [debouncedActorId, setDebouncedActorId] = useState('');
     const [activeTab, setActiveTab] = useState('verifikasi_seller');
+
+    // Debounce search & actorId (400ms) agar nyaman saat mengetik
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+            setDebouncedActorId(actorId);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [search, actorId]);
 
     // Mapping tab ke array aksi — FIX #2: tambah tab Manajemen Properti & Keamanan
     const tabActions = {
@@ -67,7 +78,7 @@ const ActivityLogs = () => {
         setLoading(true);
         try {
             const params = { page, per_page: 10 };
-            if (actorId) params.actor_id = actorId;
+            if (debouncedActorId) params.actor_id = debouncedActorId;
             if (dateFrom) params.date_from = dateFrom;
             if (dateTo) params.date_to = dateTo;
 
@@ -77,7 +88,7 @@ const ActivityLogs = () => {
                 params.action = tabActions[activeTab] || [];
             }
 
-            if (search) params.search = search;
+            if (debouncedSearch) params.search = debouncedSearch;
 
             const res = await api.get('/admin/activity-logs', { params });
             setLogs(res.data.data);
@@ -91,7 +102,7 @@ const ActivityLogs = () => {
 
     useEffect(() => {
         fetchLogs();
-    }, [page, actorId, dateFrom, dateTo, selectedAction, activeTab, search]);
+    }, [page, debouncedActorId, dateFrom, dateTo, selectedAction, activeTab, debouncedSearch]);
 
     // Tabs — FIX #2: tambah tab baru
     const tabs = [
@@ -192,12 +203,6 @@ const ActivityLogs = () => {
         <div className="space-y-6">
             {/* FIX #6: Header halaman */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div>
-                    <h2 className="text-2xl font-extrabold text-[#2c2c2c] tracking-tight">Log Aktivitas</h2>
-                    <p className="text-sm text-[#8b8478] mt-1">
-                        Riwayat lengkap semua tindakan yang dilakukan oleh admin di sistem.
-                    </p>
-                </div>
                 {/* FIX #3: Info total + reset */}
                 {meta && (
                     <div className="text-xs font-semibold text-[#8b8478] bg-[#faf7f0] px-3 py-1.5 rounded-lg border border-[#e5d8c0]">
